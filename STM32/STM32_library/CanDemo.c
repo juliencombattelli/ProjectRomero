@@ -114,6 +114,7 @@ void canPeriodic (void) {
 			CAN_TxMsg.data[0] = val_Tx;                 /* data[0] = ADC value      */
 			CAN_wrMsg (&CAN_TxMsg);                     /* transmit message         */
 			periodic_modulo++;
+			break;
 		
 		/*------------------------------------------
 	 * Send an speed frame every 600ms
@@ -145,7 +146,7 @@ void canPeriodic (void) {
  *----------------------------------------------------------------------------*/
 int main (void)  {
   
-	Timer_1234_Init (TIM1, 1000000);								/* set Timer 2 every second */
+	Timer_1234_Init (TIM1, 200000);								/* set Timer 2 every second */
 	Timer_Active_IT(TIM1, 0, canPeriodic);					/* Active Timer2 IT					*/
 	
   ADC_Init ();                                    /* initialize A/D converter */
