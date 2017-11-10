@@ -15,15 +15,32 @@
  *----------------------------------------------------------------------------*/
 
 #include <stdio.h>
+#include <string.h>
 #include "stm32f10x.h"                            /* STM32F10x Definitions    */
 #include "LCD.h"                                  /* LCD function prototypes  */
 #include "ADC.h"                                  /* LCD function prototypes  */
 #include "CAN.h"                                  /* STM32 CAN adaption layer */
 #include "Timer_1234.h"														/* Timer driver */
 #include "it.h"																		/* IT driver */
+#include "API_CAN.h"
+
+
+ /* ---------------------------------------
+  * Tests constant
+  * ---------------------------------------*/
+ data_ultrasound VAL_ULTRA ; 
+ data_odometer VAL_ODOMETER ;
+ data_potentiometer VAL_POTEN ;
+
+/*-------------------------------------------
+---------------------------------------------
+--------------------------------------------*/
+
 char text[17];
 
 unsigned int val_Tx = 0, val_Rx = 0;              /* Globals used for display */
+char trame[8];
+char trameRx[8];
 unsigned int periodic_modulo = 0;                 /* Global used to determine the time to send periodic CAN frame */
 
 volatile uint32_t msTicks;                        /* counts 1ms timeTicks     */
@@ -51,7 +68,11 @@ void Delay (uint32_t dlyTicks) {
 void val_display (void) {
 
 #ifdef __USE_LCD
-  sprintf(text, "Tx:0x%02X, Rx:0x%02X", val_Tx, val_Rx);
+  //sprintf(text, "Tx:0x%02X, Rx:0x%02X", val_Tx, val_Rx);
+	lcd_clear ();
+	sprintf(text, "RX %s", trameRx);
+	lcd_print  (text);
+	sprintf(text, "TX %s", trame);
   set_cursor (0, 1);
   lcd_print  (text);                              /* print string to LCD      */
 #endif
@@ -75,6 +96,20 @@ void can_Init (void) {
   CAN_start ();                                   /* start CAN Controller   */
 	CAN_TxMsg.id = CAN_ID_ULTRASOUND;
   CAN_waitReady ();                               /* wait til tx mbx is empty */
+	
+	VAL_ULTRA.bytes_ultrasound[0] = '0'; 
+	VAL_ULTRA.bytes_ultrasound[1] = '1'; 
+	VAL_ULTRA.bytes_ultrasound[2] = '2'; 
+	VAL_ULTRA.bytes_ultrasound[3] = '3'; 
+	VAL_ULTRA.bytes_ultrasound[4] = '4'; 
+	VAL_ULTRA.bytes_ultrasound[5] = '5'; 
+	
+	VAL_ODOMETER.left_odometer.bytes_left_odometer[0] = 'A';
+	VAL_ODOMETER.left_odometer.bytes_left_odometer[1] = 'B';
+	VAL_ODOMETER.right_odometer.bytes_right_odometer[0] = 'C';
+	VAL_ODOMETER.right_odometer.bytes_right_odometer[1] = 'D';
+	VAL_POTEN.potentiometer.bytes_potentiometer[0] = 'X';
+  VAL_POTEN.potentiometer.bytes_potentiometer[1] = 'Y';
 }
 
 void canPeriodic (void) {
@@ -89,11 +124,19 @@ void canPeriodic (void) {
   CAN_TxMsg.format = STANDARD_FORMAT;
   CAN_TxMsg.type = DATA_FRAME;	
 	
-	val_Tx++; //Value of the ultrasound sensors
+	create_ultrasound_frame(VAL_ULTRA, trame);
+	//val_Tx++; //Value of the ultrasound sensorstrame
 	CAN_waitReady ();
  	CAN_TxRdy0 = 0;    													/* CAN HW unready to transmit message mailbox 0*/
 	
-	CAN_TxMsg.data[0] = val_Tx;                 /* data[0] = ADC value      */
+	//CAN_TxMsg.data[0] = trame[0];                 /* data[0] = ADC value      */
+	//CAN_TxMsg.data[1] = trame[1];                 /* data[0] = ADC value      */
+	//CAN_TxMsg.data[2] = trame[2];                 /* data[0] = ADC value      */
+	//CAN_TxMsg.data[3] = trame[3];                 /* data[0] = ADC value      */
+	//CAN_TxMsg.data[4] = trame[4];                 /* data[0] = ADC value      */
+	//CAN_TxMsg.data[5] = trame[5];                 /* data[0] = ADC value      */
+	
+	memcpy(CAN_TxMsg.data, trame, sizeof(trame));
 	CAN_wrMsg (&CAN_TxMsg);                     /* transmit message         */
 	
 	switch (periodic_modulo) {
@@ -107,11 +150,11 @@ void canPeriodic (void) {
 			CAN_TxMsg.format = STANDARD_FORMAT;
 			CAN_TxMsg.type = DATA_FRAME;	
 		
-			val_Tx++; //Value of the direction potentiometer
+			create_potentiometer_frame(VAL_POTEN, trame) ; 
 			CAN_waitReady ();
 			CAN_TxRdy1 = 0;    													/* CAN HW unready to transmit message mailbox 1*/
 					
-			CAN_TxMsg.data[0] = val_Tx;                 /* data[0] = ADC value      */
+			memcpy(CAN_TxMsg.data, trame, sizeof(trame));
 			CAN_wrMsg (&CAN_TxMsg);                     /* transmit message         */
 			periodic_modulo++;
 			break;
@@ -126,11 +169,11 @@ void canPeriodic (void) {
 			CAN_TxMsg.format = STANDARD_FORMAT;
 			CAN_TxMsg.type = DATA_FRAME;	
 		
-			val_Tx++; //Value of the Hall effect sensors
+			create_odometer_frame(VAL_ODOMETER, trame);  
 			CAN_waitReady ();
 			CAN_TxRdy2 = 0;    													/* CAN HW unready to transmit message mailbox 2*/
 					
-			CAN_TxMsg.data[0] = val_Tx;                 /* data[0] = ADC value      */
+			memcpy(CAN_TxMsg.data, trame, sizeof(trame));
 			CAN_wrMsg (&CAN_TxMsg);
 			periodic_modulo++;
 			break;
@@ -146,7 +189,7 @@ void canPeriodic (void) {
  *----------------------------------------------------------------------------*/
 int main (void)  {
   
-	Timer_1234_Init (TIM1, 200000);								/* set Timer 2 every second */
+	Timer_1234_Init (TIM1, 1000000);								/* set Timer 2 every second */
 	Timer_Active_IT(TIM1, 0, canPeriodic);					/* Active Timer2 IT					*/
 	
   ADC_Init ();                                    /* initialize A/D converter */
@@ -172,7 +215,8 @@ int main (void)  {
 		
     if (CAN_RxRdy) {                              /* rx msg on CAN Ctrl       */
       CAN_RxRdy = 0;
-      val_Rx = CAN_RxMsg.data[0];
+      memcpy(trameRx, CAN_RxMsg.data, sizeof(trameRx));
+			//val_Rx = CAN_RxMsg.data[0];
     }
     val_display ();                               /* display TX and RX values */
   }
