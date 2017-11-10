@@ -70,7 +70,8 @@ void val_display (void) {
 #ifdef __USE_LCD
   //sprintf(text, "Tx:0x%02X, Rx:0x%02X", val_Tx, val_Rx);
 	lcd_clear ();
-	sprintf(text, "RX %s", trameRx);
+	sprintf(text, "RX %c%c%c%c%c%c%c%c", trameRx[0], trameRx[1], trameRx[2], trameRx[3], trameRx[4], trameRx[5], trameRx[6] , trameRx[7]);
+	
 	lcd_print  (text);
 	sprintf(text, "TX %s", trame);
   set_cursor (0, 1);
@@ -120,7 +121,7 @@ void canPeriodic (void) {
 	 *-----------------------------------------*/
 	CAN_TxMsg.id = CAN_ID_ULTRASOUND;                /* initialize msg to send   */  
   for (i = 0; i < 8; i++) CAN_TxMsg.data[i] = 0;
-  CAN_TxMsg.len = 1;
+  CAN_TxMsg.len = 8;
   CAN_TxMsg.format = STANDARD_FORMAT;
   CAN_TxMsg.type = DATA_FRAME;	
 	
@@ -146,7 +147,7 @@ void canPeriodic (void) {
 		case 0:
 			CAN_TxMsg.id = CAN_ID_DIR;                /* initialize msg to send   */  
 			for (i = 0; i < 8; i++) CAN_TxMsg.data[i] = 0;
-			CAN_TxMsg.len = 1;
+			CAN_TxMsg.len = 8;
 			CAN_TxMsg.format = STANDARD_FORMAT;
 			CAN_TxMsg.type = DATA_FRAME;	
 		
@@ -165,7 +166,7 @@ void canPeriodic (void) {
 		case 1:
 			CAN_TxMsg.id = CAN_ID_SPEED;                /* initialize msg to send   */  
 			for (i = 0; i < 8; i++) CAN_TxMsg.data[i] = 0;
-			CAN_TxMsg.len = 1;
+			CAN_TxMsg.len = 8;
 			CAN_TxMsg.format = STANDARD_FORMAT;
 			CAN_TxMsg.type = DATA_FRAME;	
 		
@@ -189,7 +190,7 @@ void canPeriodic (void) {
  *----------------------------------------------------------------------------*/
 int main (void)  {
   
-	Timer_1234_Init (TIM1, 1000000);								/* set Timer 2 every second */
+	Timer_1234_Init (TIM1, 200000);								/* set Timer 2 every second */
 	Timer_Active_IT(TIM1, 0, canPeriodic);					/* Active Timer2 IT					*/
 	
   ADC_Init ();                                    /* initialize A/D converter */

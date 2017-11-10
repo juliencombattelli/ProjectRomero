@@ -27,7 +27,7 @@
 #define CAN_ID_SPEED					((unsigned int) 7) 				/* Identificator priority for the speed frame */
 #define CAN_ID_CMD_DIR				((unsigned int) 2) 				/* Identificator priority for the direction control frame */
 #define CAN_ID_CMD_SPEED			((unsigned int) 3) 				/* Identificator priority for the speed control frame */
-#define CAN_ID_RMT_ULTRASOUND	((unsigned int) 0) 				/* Identificator priority for the ultrasound remote frame */
+#define CAN_ID_RMT_ULTRASOUND	((unsigned int) 9) 				/* Identificator priority for the ultrasound remote frame */
 #define CAN_ID_RMT_DIR				((unsigned int) 4) 				/* Identificator priority for the direction remote frame */
 #define CAN_ID_RMT_SPEED			((unsigned int) 5) 				/* Identificator priority for the speed remote frame */
 

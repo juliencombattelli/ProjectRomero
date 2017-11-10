@@ -207,6 +207,8 @@ void CAN_rdMsg (CAN_msg *msg)  {
   msg->data[7] = (CAN1->sFIFOMailBox[numFIFO].RDHR >> 24) & 0xFF;
 
   CAN1->RF0R |= CAN_RF0R_RFOM0;             /* Release FIFO 0 output mailbox */
+	
+	///////////
 }
 
 /*----------------------------------------------------------------------------
