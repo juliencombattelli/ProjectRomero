@@ -160,36 +160,56 @@ void CAN_wrMsg (CAN_msg *msg)  {
   read a message from CAN peripheral and release it
  *----------------------------------------------------------------------------*/
 void CAN_rdMsg (CAN_msg *msg)  {
-                                              /* Read identifier information  */
-  if ((CAN1->sFIFOMailBox[0].RIR & CAN_ID_EXT) == 0) {
+  int numFIFO;
+	switch (msg->id) {
+		case CAN_ID_CMD_SPEED:
+			numFIFO = 0;
+			break;
+		case CAN_ID_CMD_DIR:
+			numFIFO = 0;
+			break;
+		case CAN_ID_RMT_ULTRASOUND:
+			numFIFO = 1;
+			break;
+		case CAN_ID_RMT_DIR:
+			numFIFO = 1;
+			break;
+		case CAN_ID_RMT_SPEED:
+			numFIFO = 1;
+			break;
+	}      
+
+	/* Read identifier information  */
+  if ((CAN1->sFIFOMailBox[numFIFO].RIR & CAN_ID_EXT) == 0) {
     msg->format = STANDARD_FORMAT;
-    msg->id     = 0x000007FF & (CAN1->sFIFOMailBox[0].RIR >> 21);
+    msg->id     = 0x000007FF & (CAN1->sFIFOMailBox[numFIFO].RIR >> 21);
   } else {
     msg->format = EXTENDED_FORMAT;
-    msg->id     = 0x1FFFFFFF & (CAN1->sFIFOMailBox[0].RIR >> 3);
+    msg->id     = 0x1FFFFFFF & (CAN1->sFIFOMailBox[numFIFO].RIR >> 3);
   }
                                               /* Read type information        */
-  if ((CAN1->sFIFOMailBox[0].RIR & CAN_RTR_REMOTE) == 0) {
+  if ((CAN1->sFIFOMailBox[numFIFO].RIR & CAN_RTR_REMOTE) == 0) {
     msg->type =   DATA_FRAME;
   } else {
     msg->type = REMOTE_FRAME;
   }
                                               /* Read number of rec. bytes    */
-  msg->len     = (CAN1->sFIFOMailBox[0].RDTR      ) & 0x0F;
+  msg->len     = (CAN1->sFIFOMailBox[numFIFO].RDTR      ) & 0x0F;
                                               /* Read data bytes              */
-  msg->data[0] = (CAN1->sFIFOMailBox[0].RDLR      ) & 0xFF;
-  msg->data[1] = (CAN1->sFIFOMailBox[0].RDLR >>  8) & 0xFF;
-  msg->data[2] = (CAN1->sFIFOMailBox[0].RDLR >> 16) & 0xFF;
-  msg->data[3] = (CAN1->sFIFOMailBox[0].RDLR >> 24) & 0xFF;
+  msg->data[0] = (CAN1->sFIFOMailBox[numFIFO].RDLR      ) & 0xFF;
+  msg->data[1] = (CAN1->sFIFOMailBox[numFIFO].RDLR >>  8) & 0xFF;
+  msg->data[2] = (CAN1->sFIFOMailBox[numFIFO].RDLR >> 16) & 0xFF;
+  msg->data[3] = (CAN1->sFIFOMailBox[numFIFO].RDLR >> 24) & 0xFF;
 
-  msg->data[4] = (CAN1->sFIFOMailBox[0].RDHR      ) & 0xFF;
-  msg->data[5] = (CAN1->sFIFOMailBox[0].RDHR >>  8) & 0xFF;
-  msg->data[6] = (CAN1->sFIFOMailBox[0].RDHR >> 16) & 0xFF;
-  msg->data[7] = (CAN1->sFIFOMailBox[0].RDHR >> 24) & 0xFF;
+  msg->data[4] = (CAN1->sFIFOMailBox[numFIFO].RDHR      ) & 0xFF;
+  msg->data[5] = (CAN1->sFIFOMailBox[numFIFO].RDHR >>  8) & 0xFF;
+  msg->data[6] = (CAN1->sFIFOMailBox[numFIFO].RDHR >> 16) & 0xFF;
+  msg->data[7] = (CAN1->sFIFOMailBox[numFIFO].RDHR >> 24) & 0xFF;
 
   CAN1->RF0R |= CAN_RF0R_RFOM0;             /* Release FIFO 0 output mailbox */
+	
+	///////////
 }
-
 
 /*----------------------------------------------------------------------------
   CAN write message filter
@@ -217,8 +237,12 @@ void CAN_wrFilter (unsigned int id, unsigned char format)  {
 
   CAN1->sFilterRegister[CAN_filterIdx].FR1 = CAN_msgId; /*  32-bit identifier                */
   CAN1->sFilterRegister[CAN_filterIdx].FR2 = CAN_msgId; /*  32-bit identifier                */
-   
-  CAN1->FFA1R &= ~(unsigned int)(1 << CAN_filterIdx);   /* assign filter to FIFO 0           */
+  if (id == CAN_ID_CMD_SPEED || id == CAN_ID_CMD_DIR) {
+		CAN1->FFA1R &= ~(unsigned int)(1 << CAN_filterIdx); /* assign filter to FIFO 0           */
+	}
+	else {
+		CAN1->FFA1R &= (unsigned int)(1 << CAN_filterIdx);  /* assign filter to FIFO 1           */
+	}
   CAN1->FA1R  |=  (unsigned int)(1 << CAN_filterIdx);   /* activate filter                   */
 
   CAN1->FMR &= ~CAN_FMR_FINIT;              /* reset initMode for filterBanks*/
