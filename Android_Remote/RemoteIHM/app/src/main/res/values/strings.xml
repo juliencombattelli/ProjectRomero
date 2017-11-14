@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Remote</string>
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="autonomous">Autonomous</string>
+    <string name="manual">Manual</string>
+    <string name="turbo">Turbo</string>
+</resources>
