@@ -1,0 +1,3 @@
+# try with a sleep 1 just before hciconfig
+
+ACTION=="add", KERNEL=="hci0", RUN+="/usr/bin/hciconfig hci0 piscan"
