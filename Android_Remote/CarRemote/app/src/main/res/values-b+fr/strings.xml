@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Project Romero</string>
+
+    <string-array name="array_name">
+        <item>Température du capteur</item>
+        <item>Débit d\'air détecté</item>
+    </string-array>
+    <string name="Scan">Scanner</string>
+    <string name="Start">Démarrer</string>
+    <string name="Pause">Pause</string>
+    <string name="Stop">Arrêt</string>
+    <string name="Connect">Connecter</string>
+
+</resources>
+
