@@ -43,16 +43,26 @@ void CAN_setup (void)  {
   RCC->APB1ENR |= ( 1UL << 25);           /* enable clock for CAN             */
 
   /* Note: MCBSTM32 uses PB8 and PB9 for CAN                                  */
+//  RCC->APB2ENR |=  ( 1UL <<  0);          /* enable clock for AF              */
+//  AFIO->MAPR   &=  0xFFFF9FFF;            /* reset CAN remap                  */
+//  AFIO->MAPR   |=  0x00004000;            /*   set CAN remap, use PB8, PB9    */
+	/* Note: Nucleo uses PA11 and PA12 for CAN                                  */
   RCC->APB2ENR |=  ( 1UL <<  0);          /* enable clock for AF              */
-  AFIO->MAPR   &=  0xFFFF9FFF;            /* reset CAN remap                  */
-  AFIO->MAPR   |=  0x00004000;            /*   set CAN remap, use PB8, PB9    */
+  AFIO->MAPR   &=  0xFFFF9FFF;            /* reset CAN remap use PA11 and PA12                  */
 
-  RCC->APB2ENR |=  ( 1UL <<  3);          /* enable clock for GPIO B          */
-  GPIOB->CRH   &= ~(0x0F <<  0);
-  GPIOB->CRH   |=  (0x08 <<  0);          /* CAN RX PB.8 input push pull      */
+	//RCC->APB2ENR |=  ( 1UL <<  3);          /* enable clock for GPIO B          */
+  RCC->APB2ENR |=  ( 1UL <<  2);          /* enable clock for GPIO A          */
+	
+//  GPIOB->CRH   &= ~(0x0F <<  0);
+//  GPIOB->CRH   |=  (0x08 <<  0);          /* CAN RX PB.8 input push pull      */
+//  
+//  GPIOB->CRH   &= ~(0x0F <<  4);
+//  GPIOB->CRH   |=  (0x0B <<  4);          /* CAN TX PB.9 alt.output push pull */ 
+	GPIOA->CRH   &= ~(0x0F <<  12);
+  GPIOA->CRH   |=  (0x08 <<  12);          /* CAN RX PA.11 input push pull      */
   
-  GPIOB->CRH   &= ~(0x0F <<  4);
-  GPIOB->CRH   |=  (0x0B <<  4);          /* CAN TX PB.9 alt.output push pull */ 
+  GPIOA->CRH   &= ~(0x0F <<  16);
+  GPIOA->CRH   |=  (0x0B <<  16);          /* CAN TX PA.12 alt.output push pull */ 
 
   NVIC_EnableIRQ(USB_HP_CAN1_TX_IRQn);    /* enable CAN TX interrupt          */
   NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);   /* enable CAN RX interrupt          */
@@ -205,13 +215,8 @@ void CAN_rdMsg (CAN_msg *msg)  {
   msg->data[5] = (CAN1->sFIFOMailBox[numFIFO].RDHR >>  8) & 0xFF;
   msg->data[6] = (CAN1->sFIFOMailBox[numFIFO].RDHR >> 16) & 0xFF;
   msg->data[7] = (CAN1->sFIFOMailBox[numFIFO].RDHR >> 24) & 0xFF;
-	
-	if (numFIFO == 0) {
-		CAN1->RF0R |= CAN_RF0R_RFOM0;             /* Release FIFO 0 output mailbox */
-	}
-	else if (numFIFO == 1) {
-		CAN1->RF1R |= CAN_RF1R_RFOM1;             /* Release FIFO 1 output mailbox */
-	}
+
+  CAN1->RF0R |= CAN_RF0R_RFOM0;             /* Release FIFO 0 output mailbox */
 }
 
 /*----------------------------------------------------------------------------
@@ -289,7 +294,7 @@ void USB_HP_CAN1_TX_IRQHandler (void) {
  *----------------------------------------------------------------------------*/
 void USB_LP_CAN1_RX0_IRQHandler (void) {
 
-  if ((CAN1->RF0R & CAN_RF0R_FMP0) || (CAN1->RF1R & CAN_RF1R_FMP1)) {			/* message pending ?              */
+  if (CAN1->RF0R & CAN_RF0R_FMP0) {			/* message pending ?              */
 	CAN_rdMsg (&CAN_RxMsg);                 /* read the message               */
 
     CAN_RxRdy = 1;                          /* set receive flag               */
