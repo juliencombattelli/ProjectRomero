@@ -205,10 +205,13 @@ void CAN_rdMsg (CAN_msg *msg)  {
   msg->data[5] = (CAN1->sFIFOMailBox[numFIFO].RDHR >>  8) & 0xFF;
   msg->data[6] = (CAN1->sFIFOMailBox[numFIFO].RDHR >> 16) & 0xFF;
   msg->data[7] = (CAN1->sFIFOMailBox[numFIFO].RDHR >> 24) & 0xFF;
-
-  CAN1->RF0R |= CAN_RF0R_RFOM0;             /* Release FIFO 0 output mailbox */
 	
-	///////////
+	if (numFIFO == 0) {
+		CAN1->RF0R |= CAN_RF0R_RFOM0;             /* Release FIFO 0 output mailbox */
+	}
+	else if (numFIFO == 1) {
+		CAN1->RF1R |= CAN_RF1R_RFOM1;             /* Release FIFO 1 output mailbox */
+	}
 }
 
 /*----------------------------------------------------------------------------
@@ -286,7 +289,7 @@ void USB_HP_CAN1_TX_IRQHandler (void) {
  *----------------------------------------------------------------------------*/
 void USB_LP_CAN1_RX0_IRQHandler (void) {
 
-  if (CAN1->RF0R & CAN_RF0R_FMP0) {			/* message pending ?              */
+  if ((CAN1->RF0R & CAN_RF0R_FMP0) || (CAN1->RF1R & CAN_RF1R_FMP1)) {			/* message pending ?              */
 	CAN_rdMsg (&CAN_RxMsg);                 /* read the message               */
 
     CAN_RxRdy = 1;                          /* set receive flag               */
