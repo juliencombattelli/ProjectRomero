@@ -58,7 +58,7 @@ void Delay (uint32_t dlyTicks) {
   uint32_t curTicks;
 
   curTicks = msTicks;
-  while ((msTicks - curTicks) < dlyTicks);
+    while ((msTicks - curTicks) < dlyTicks);
 }
 
 
@@ -70,7 +70,7 @@ void val_display (void) {
 #ifdef __USE_LCD
   //sprintf(text, "Tx:0x%02X, Rx:0x%02X", val_Tx, val_Rx);
 	lcd_clear ();
-	sprintf(text, "RX %c%c%c%c%c%c%c%c", trameRx[0], trameRx[1], trameRx[2], trameRx[3], trameRx[4], trameRx[5], trameRx[6] , trameRx[7]);
+	sprintf(text, "RX %d", CAN_RxMsg.id);
 	
 	lcd_print  (text);
 	sprintf(text, "TX %s", trame);
@@ -215,10 +215,13 @@ int main (void)  {
   while (1) {
 		
     if (CAN_RxRdy) {                              /* rx msg on CAN Ctrl       */
-      CAN_RxRdy = 0;
-      memcpy(trameRx, CAN_RxMsg.data, sizeof(trameRx));
+      //memcpy(trameRx, CAN_RxMsg.data, sizeof(trameRx));
+			val_display (); 
+			CAN_RxRdy = 0;
+      
 			//val_Rx = CAN_RxMsg.data[0];
+			
     }
-    val_display ();                               /* display TX and RX values */
+                                  /* display TX and RX values */
   }
 }
