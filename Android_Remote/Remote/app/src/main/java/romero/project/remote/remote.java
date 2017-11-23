@@ -16,6 +16,7 @@ import android.graphics.PorterDuff;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 
@@ -54,14 +55,14 @@ public class remote extends AppCompatActivity {
     private BluetoothDevice btDevice;
     BluetoothGattCharacteristic stateCharacteristic;
     BluetoothGattCharacteristic joystickCharacteristic;
-    BluetoothGattCharacteristic batteryLevelCharacteristic;
     BluetoothGattCharacteristic alertCharacteristic;
+    BluetoothGattCharacteristic feedbackCharacteristic;
 
     Long uuidRemoteService = Long.parseLong("7DB9", 16);
     Long uuidJoystick = Long.parseLong("209D", 16);
     Long uuidState = Long.parseLong("D288", 16);
-    Long uuidBatteryLevel = Long.parseLong("2A19", 16);
-    Long uuidAlert = Long.parseLong("C15B", 16);
+    Long uuidAlert = Long.parseLong("DCB1", 16);
+    Long uuidFeedback = Long.parseLong("C15B", 16);
 
 
 
@@ -173,12 +174,8 @@ public class remote extends AppCompatActivity {
                     joystick.resetButtonPosition();
                     joystick.invalidate();
                     start.setText(R.string.start);
+                    auto.setText(R.string.manual);
                     connect.setText(R.string.connect);
-                    connected = false;
-                    started = false;
-                    turboed = false;
-                    autonomous = false;
-                    driving = false;
                     if (btGatt != null) {
                         btGatt.disconnect();
                     }
@@ -191,8 +188,12 @@ public class remote extends AppCompatActivity {
                     joystick.resetButtonPosition();
                     joystick.invalidate();
                     start.setText(R.string.start);
+                    auto.setText(R.string.manual);
                     connect.setText(R.string.disconnect);
-                    connected = true;
+                    started = false;
+                    turboed = false;
+                    autonomous = false;
+                    driving = false;
                     if (btGatt == null) {
                         btGatt = btDevice.connectGatt(remote.this, false, gattCallback);
                     }
@@ -318,20 +319,20 @@ public class remote extends AppCompatActivity {
             public void onMove(int angle, int strength) {
                 if (connected) {
                     if (started) {
-                        if (strength>0.5){
-                            if (!driving){
+                        if (strength > 50) {
+                            if (!driving) {
                                 driving = true;
                                 Log.i(TAG, "driving");
                                 if (btGatt != null) {
                                     sendState();
                                 }
                             }
-                            Log.i(TAG, "degrees:"+ angle +"\n");
+                            Log.i(TAG, "degrees:" + angle + "\n");
                             joystickCharacteristic.setValue(angle, FORMAT_UINT8, 0);
                             joystickCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
                             btGatt.writeCharacteristic(joystickCharacteristic);
                         }
-                        if (strength == 0){
+                        if (strength < 20 & driving) {
                             driving = false;
                             Log.i(TAG, "stopped");
                             if (btGatt != null) {
@@ -341,7 +342,7 @@ public class remote extends AppCompatActivity {
                     }
                 }
             }
-        });
+        }, 150);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -351,10 +352,11 @@ public class remote extends AppCompatActivity {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                Log.i(TAG, "Connected to GATT server\n");
                 connected = true;
+                Log.i(TAG, "Connected to GATT server\n");
                 btGatt.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                connected = false;
                 Log.i(TAG, "Disconnected from GATT server\n");
                 btGatt.close();
                 btGatt = null;
@@ -387,14 +389,14 @@ public class remote extends AppCompatActivity {
                         } else if (uuid == uuidState) {
                             stateCharacteristic = gattCharacteristic;
                             Log.i(TAG, "found state\n");
-                        } else if (uuid == uuidBatteryLevel) {
-                            batteryLevelCharacteristic = gattCharacteristic;
-                            enableNotification(true, btGatt, batteryLevelCharacteristic);
-                            Log.i(TAG, "found battery level\n");
                         } else if (uuid == uuidAlert) {
                             alertCharacteristic = gattCharacteristic;
-                            enableNotification(true, btGatt, alertCharacteristic);
                             Log.i(TAG, "found alert\n");
+                            enableNotification(btGatt, alertCharacteristic);
+                        } else if (uuid == uuidFeedback) {
+                            feedbackCharacteristic = gattCharacteristic;
+                            Log.i(TAG, "found feedback\n");
+                            enableNotification(btGatt, feedbackCharacteristic);
                         }
                     }
                 }
@@ -411,13 +413,13 @@ public class remote extends AppCompatActivity {
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic,
                                           int status) {
-            //Log.i(TAG, "setValue\n");
         }
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            if (started) {
-                final int data = characteristic.getIntValue(FORMAT_UINT8, 0);
+            Log.i(TAG, "notification!");
+            final int data = characteristic.getIntValue(FORMAT_UINT8, 0);
+            if (characteristic == feedbackCharacteristic){
                 Log.i(TAG, "data: " + data + "\n");
             }
         }
@@ -448,11 +450,14 @@ public class remote extends AppCompatActivity {
         btGatt.writeCharacteristic(stateCharacteristic);
     }
 
-    private void enableNotification(boolean enable, BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-        gatt.setCharacteristicNotification(characteristic, enable);
-        Log.i(TAG, "notifications\n");
-        BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"));
-        descriptor.setValue(enable ? BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
+    private void enableNotification(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+        gatt.setCharacteristicNotification(characteristic, true);
+        Log.i(TAG, "notification\n");
+        // 0x2902 org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
+        UUID uuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+        BluetoothGattDescriptor descriptor = characteristic.getDescriptor(uuid);
+        descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
         gatt.writeDescriptor(descriptor);
     }
+
 }
