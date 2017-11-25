@@ -423,7 +423,6 @@ public class remote extends AppCompatActivity {
         Log.i(TAG, "state: " + stateCode + "\n");
         Log.i(TAG, "joystick: " + joystick_value + "\n");
         message = stateCode << 5;
-        Log.i(TAG, "new state: " + message + "\n");
         message = message + joystick_value;
         Log.i(TAG, "complete message: " + message + "\n");
 
@@ -468,7 +467,7 @@ public class remote extends AppCompatActivity {
                 switch (direction_value) {
                     case 0:
                         front.setImageResource(R.drawable.ic_arrow_front_ice);
-                        right.setImageResource(R.drawable.ic_arrow_right_ice);
+                        right.setImageResource(R.drawable.ic_arrow_right_blue);
                         left.setImageResource(R.drawable.ic_arrow_left_ice);
                         break;
                     case 1:
@@ -486,6 +485,22 @@ public class remote extends AppCompatActivity {
                         right.setImageResource(R.drawable.ic_arrow_right_ice);
                         left.setImageResource(R.drawable.ic_arrow_left_blue);
                         break;
+                    case 4:
+                        front.setImageResource(R.drawable.ic_arrow_front_ice);
+                        right.setImageResource(R.drawable.ic_arrow_right_ice);
+                        left.setImageResource(R.drawable.ic_arrow_left_blue);
+                        break;
+                    case 7:
+                        front.setImageResource(R.drawable.ic_arrow_front_ice);
+                        right.setImageResource(R.drawable.ic_arrow_right_ice);
+                        left.setImageResource(R.drawable.ic_arrow_left_ice);
+                        break;
+                    default:
+                        front.setImageResource(R.drawable.ic_arrow_front_ice);
+                        right.setImageResource(R.drawable.ic_arrow_right_ice);
+                        left.setImageResource(R.drawable.ic_arrow_left_ice);
+                        break;
+
                 }
             }
         });

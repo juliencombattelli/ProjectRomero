@@ -3,7 +3,6 @@
 BLEService remoteService("7DB9"); // create service
 
 // create characteristics
-BLEUnsignedIntCharacteristic joystick("209D", BLEWrite);
 BLEUnsignedIntCharacteristic state("D288", BLEWrite);
 BLEUnsignedIntCharacteristic alert("DCB1", BLERead | BLENotify);
 BLEUnsignedIntCharacteristic feedback("C15B", BLERead | BLENotify);
@@ -23,7 +22,6 @@ void setup() {
   BLE.setAdvertisedService(remoteService);
 
   // add the characteristic to the service
-  remoteService.addCharacteristic(joystick);
   remoteService.addCharacteristic(state);
   remoteService.addCharacteristic(feedback);
   remoteService.addCharacteristic(alert);
@@ -34,10 +32,6 @@ void setup() {
   // assign event handlers for connected, disconnected to peripheral
   BLE.setEventHandler(BLEConnected, blePeripheralConnectHandler);
   BLE.setEventHandler(BLEDisconnected, blePeripheralDisconnectHandler);
-
-  // assign event handlers for characteristic
-  joystick.setEventHandler(BLEWritten, joystickCharacteristicWritten);
-  joystick.setValue(0);
 
   // assign event handlers for characteristic
   state.setEventHandler(BLEWritten, stateCharacteristicWritten);
@@ -66,37 +60,19 @@ void blePeripheralDisconnectHandler(BLEDevice central) {
   Serial.println(central.address());
 }
 
-void joystickCharacteristicWritten(BLEDevice central, BLECharacteristic characteristic) {
-  // central wrote new value to characteristic
-  int current_joystick = joystick.value();
-  int new_dir;
-  Serial.print("Joystick event, written: ");
-  Serial.println(current_joystick);
-  if (moving) {
-    if ((current_joystick >= 0) & (current_joystick <= 60)){
-      new_dir = 1;
-    } else if ((current_joystick > 60) & (current_joystick <= 120)){
-      new_dir = 2;
-    } else if ((current_joystick > 120) & (current_joystick <= 180)){
-      new_dir = 3;
-    } else {
-      new_dir = 0;
-    }
-    if (new_dir != dir){
-      dir = new_dir;
-      Serial.print("direction: ");
-      Serial.println(dir);
-      feedback.setValue(dir);
-    }
-  }
-  
-}
-
 void stateCharacteristicWritten(BLEDevice central, BLECharacteristic characteristic) {
   // central wrote new value to characteristic
   Serial.print("State event, written: ");
-  int current_state = state.value();
+  int current_state = state.value() >> 5;
+  int current_direction = state.value() & 0xF;
   Serial.println(current_state);
+
+  if (current_direction != dir){
+    dir = current_direction;
+    Serial.print("direction: ");
+    Serial.println(dir);
+    feedback.setValue(dir);
+  }
   
   switch (current_state) {
     case 0:
@@ -141,6 +117,15 @@ void stateCharacteristicWritten(BLEDevice central, BLECharacteristic characteris
       moving = false;
       turbo = false;
       break;
+  }
+
+  if (!moving){
+    if (dir){
+      dir = 7;
+      Serial.print("direction: ");
+      Serial.println(dir);
+      feedback.setValue(dir);    
+    }
   }
    
   /*Serial.print("idle: ");
