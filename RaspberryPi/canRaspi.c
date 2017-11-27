@@ -1,3 +1,10 @@
+/*
+ *  TODO: Add values from bluetooth
+ *        Use the structures and functions already defined to send data
+ *
+ *
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -36,7 +43,7 @@ void create_direction_command_frame(data_direction_command data, char * frame)
 }
 
 
-
+//init the send
 int initSend() 
 {
 	int s;
@@ -62,15 +69,24 @@ int initSend()
                 perror("Error in socket bind");
         }
 
-	VAL_SPEED.speed_command.bytes_speed_command[0] = '1';
-	VAL_SPEED.speed_command.bytes_speed_command[1] = '2';
+    
+        /*
+         * DEFAULT VALUES FOR TESTING
+         * CHANGE THE VALUES BY THE BLUETOOTH VALUES
+        */
+        VAL_SPEED.speed_command.bytes_speed_command[0] = '1';
+        VAL_SPEED.speed_command.bytes_speed_command[1] = '2';
 	
-	VAL_DIRECTION.direction_command.bytes_direction_command[0] = '3';
+        VAL_DIRECTION.direction_command.bytes_direction_command[0] = '3';
         VAL_DIRECTION.direction_command.bytes_direction_command[1] = '4';
 	return s;
 }
 
 
+/*
+ * TODO: Add value from bluetooth in parameters
+ * Call the function create_speed_command_frame (learn more about structures  : canRaspi.h)
+*/
 //send data speed command
 void SendData_Speed() 
 {
@@ -87,6 +103,10 @@ void SendData_Speed()
 	i = 0;
 }
 
+/*
+ * TODO: Add value from bluetooth in parameters
+ * Call the function create_direction_command_frame (learn more about structures  : canRaspi.h)
+ */
 //send data direction command
 void SendData_Direction() 
 {
@@ -103,8 +123,11 @@ void SendData_Direction()
 	i = 1;
 }
 
+
+//function called by the signal SIGALRM
 void SendData(int sig)
 {
+        //Multiply the period by 2
         if (i == 0)
         {
                 SendData_Direction();
@@ -115,7 +138,7 @@ void SendData(int sig)
         }
 }
 
-//receive data
+//receive and print data depending on the id of the frame
 static void * ReceiveData()
 {
         int s;
@@ -141,7 +164,7 @@ static void * ReceiveData()
         if(bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
                 perror("Error in socket bind");
         }
-
+    
         while(1) {
 
                 nbytes = read(s, &frame, sizeof(struct can_frame)) ;
@@ -202,14 +225,20 @@ static void * ReceiveData()
 int main(void)
 {
         pthread_t threadReceive ; 
-      	i=0 ;   
+      	i=0 ;
+        //create and launch a thread to receive data
         if(pthread_create(&threadReceive,NULL,ReceiveData,NULL)==1) {
             fprintf (stderr, "%s", strerror (1));
         }
+        //init send configuration
 		socket_send = initSend();
+    
+        //init the function called by the signal SIGALRM
 		signal(SIGALRM,SendData);
+        //generate a signal SIGALRM each 25ms
 		ualarm(25000,25000) ;  
 	
+        //wait the end of the thread created (impossible due to the while 1)
         pthread_join(threadReceive,NULL) ; 
         return 0;
 }
