@@ -170,24 +170,8 @@ void CAN_wrMsg (CAN_msg *msg)  {
   read a message from CAN peripheral and release it
  *----------------------------------------------------------------------------*/
 void CAN_rdMsg (CAN_msg *msg)  {
-  int numFIFO;
-	switch (msg->id) {
-		case CAN_ID_CMD_SPEED:
-			numFIFO = 0;
-			break;
-		case CAN_ID_CMD_DIR:
-			numFIFO = 0;
-			break;
-		case CAN_ID_RMT_ULTRASOUND:
-			numFIFO = 1;
-			break;
-		case CAN_ID_RMT_DIR:
-			numFIFO = 1;
-			break;
-		case CAN_ID_RMT_SPEED:
-			numFIFO = 1;
-			break;
-	}      
+  int numFIFO = 0;
+	
 
 	/* Read identifier information  */
   if ((CAN1->sFIFOMailBox[numFIFO].RIR & CAN_ID_EXT) == 0) {

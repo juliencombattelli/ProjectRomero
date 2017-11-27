@@ -1,24 +1,16 @@
-/*----------------------------------------------------------------------------
- * Name:    CanDemo.c
- * Purpose: CAN example for MCBSTM32
- * Note(s): possible defines set in "options for target - C/C++ - Define"
- *            __USE_LCD   - enable Output on LCD
- *----------------------------------------------------------------------------
- * This file is part of the uVision/ARM development tools.
- * This software may only be used under the terms of a valid, current,
- * end user licence from KEIL for a compatible version of KEIL software
- * development tools. Nothing else gives you the right to use this software.
- *
- * This software is supplied "AS IS" without warranties of any kind.
- *
- * Copyright (c) 2009-2013 Keil - An ARM Company. All rights reserved.
- *----------------------------------------------------------------------------*/
+#include <stdint.h>
+#include <stm32f10x.h>
 
+#include "system_time.h"
+#include "manager.h"
+#include "motors.h"
+#include "front_motor.h"
+#include "direction.h"
 #include <stdio.h>
 #include <string.h>
+
+
 #include "stm32f10x.h"                            /* STM32F10x Definitions    */
-#include "LCD.h"                                  /* LCD function prototypes  */
-#include "ADC.h"                                  /* LCD function prototypes  */
 #include "CAN.h"                                  /* STM32 CAN adaption layer */
 #include "Timer_1234.h"														/* Timer driver */
 #include "it.h"																		/* IT driver */
@@ -40,17 +32,18 @@ char text[17];
 
 unsigned int val_Tx = 0, val_Rx = 0;              /* Globals used for display */
 char trame[8];
-char trameRx[8];
+char SpeedRx[1];
+char DirRx[1];
 unsigned int periodic_modulo = 0;                 /* Global used to determine the time to send periodic CAN frame */
 
 volatile uint32_t msTicks;                        /* counts 1ms timeTicks     */
 /*----------------------------------------------------------------------------
   SysTick_Handler
  *----------------------------------------------------------------------------*/
-void SysTick_Handler(void) {
-  msTicks++;                        /* increment counter necessary in Delay() */
+/*void SysTick_Handler(void) {
+  msTicks++;                        //increment counter necessary in Delay() 
 }
-
+*/
 /*----------------------------------------------------------------------------
   delays number of tick Systicks (happens every 1 ms)
  *----------------------------------------------------------------------------*/
@@ -59,26 +52,6 @@ void Delay (uint32_t dlyTicks) {
 
   curTicks = msTicks;
     while ((msTicks - curTicks) < dlyTicks);
-}
-
-
-/*----------------------------------------------------------------------------
-  display transmit and receieve values
- *----------------------------------------------------------------------------*/
-void val_display (void) {
-
-#ifdef __USE_LCD
-  //sprintf(text, "Tx:0x%02X, Rx:0x%02X", val_Tx, val_Rx);
-	lcd_clear ();
-	sprintf(text, "RX %d", CAN_RxMsg.id);
-	
-	lcd_print  (text);
-	sprintf(text, "TX %s", trame);
-  set_cursor (0, 1);
-  lcd_print  (text);                              /* print string to LCD      */
-#endif
-
-  Delay (10);                                     /* dlay for 10ms            */
 }
 
 
@@ -128,21 +101,13 @@ void canPeriodic (void) {
 	create_ultrasound_frame(VAL_ULTRA, trame);
 	//val_Tx++; //Value of the ultrasound sensorstrame
 	CAN_waitReady ();
- 	CAN_TxRdy0 = 0;    													/* CAN HW unready to transmit message mailbox 0*/
-	
-	//CAN_TxMsg.data[0] = trame[0];                 /* data[0] = ADC value      */
-	//CAN_TxMsg.data[1] = trame[1];                 /* data[0] = ADC value      */
-	//CAN_TxMsg.data[2] = trame[2];                 /* data[0] = ADC value      */
-	//CAN_TxMsg.data[3] = trame[3];                 /* data[0] = ADC value      */
-	//CAN_TxMsg.data[4] = trame[4];                 /* data[0] = ADC value      */
-	//CAN_TxMsg.data[5] = trame[5];                 /* data[0] = ADC value      */
-	
+ 	CAN_TxRdy0 = 0;    													/* CAN HW unready to transmit message mailbox 0*/	
 	memcpy(CAN_TxMsg.data, trame, sizeof(trame));
 	CAN_wrMsg (&CAN_TxMsg);                     /* transmit message         */
 	
 	switch (periodic_modulo) {
 		/*------------------------------------------
-	 * Send an direction frame every 600ms
+	 * Send a direction frame every 600ms
 	 *-----------------------------------------*/
 		case 0:
 			CAN_TxMsg.id = CAN_ID_DIR;                /* initialize msg to send   */  
@@ -185,43 +150,98 @@ void canPeriodic (void) {
 	}		
 }
 
+
+void Turn(uint8_t deg){
+	uint8_t angle = Direction_get() ;
+	if (deg > Direction_get() + 5){
+		FrontMotor_turn(LEFT);}
+	else if (deg < Direction_get() - 5){
+		FrontMotor_turn(RIGHT);}
+	else {
+		FrontMotor_turn(NONE);}}
+
+		
+void Speed_Cmd(char *cmd){
+	if (cmd[0] == '0'){ 										//STOP
+		Motor_setSpeed(REAR_MOTOR_L, 0); 
+		Motor_setSpeed(REAR_MOTOR_R, 0);}
+	else if (cmd[0] == '1') { 							//Default speed
+		Motor_setSpeed(REAR_MOTOR_L, 0.5); 
+		Motor_setSpeed(REAR_MOTOR_R, 0.5);}
+	else if (cmd[0] == '2') {     					//Turbo speed
+		Motor_setSpeed(REAR_MOTOR_L, 1); 
+		Motor_setSpeed(REAR_MOTOR_R, 1);}}	
+		
+		
+void Dir_Cmd(char *cmd){
+	if (DirRx[0] == '0'){				//Position centrale des roues
+		Turn(132);} 															
+	else if (DirRx[0] == '1')	{	//Position à gauche des roues		
+		Turn(150);} 
+	else if (DirRx[0] == '2') { //Position à droite des roues
+		Turn(110);}}
+		
 /*----------------------------------------------------------------------------
   MAIN function
  *----------------------------------------------------------------------------*/
+
 int main (void)  {
-  
-	Timer_1234_Init (TIM1, 200000);								/* set Timer 2 every second */
-	Timer_Active_IT(TIM1, 0, canPeriodic);					/* Active Timer2 IT					*/
+  uint8_t angle;
 	
-  ADC_Init ();                                    /* initialize A/D converter */
+	Timer_1234_Init (TIM2, 200000);								/* set Timer 2 every second */
+	Timer_Active_IT(TIM2, 0, canPeriodic);					/* Active Timer2 IT					*/
 
   SysTick_Config(SystemCoreClock / 1000);         /* SysTick 1 msec IRQ       */
 
-#ifdef __USE_LCD
-  lcd_init  ();                                   /* initialise LCD           */
-  lcd_clear ();
-  lcd_print ("MCBSTM32 CanDemo");
-  set_cursor (0, 1);
-  lcd_print ("  www.keil.com  ");
-  Delay (4000);                                   /* Wait for initial display */
-
-  lcd_clear ();
-  lcd_print ("CAN at 500kbit/s");
-#endif
-
+	Manager_Init();
+	Motor_QuickInit(REAR_MOTOR_L);
+	Motor_QuickInit(REAR_MOTOR_R);
+	Motor_Enable(REAR_MOTOR_L);
+	Motor_Enable(REAR_MOTOR_R);	
   can_Init ();                                    /* initialize CAN interface */
-
   
   while (1) {
+		angle = Direction_get() ;				
 		
-    if (CAN_RxRdy) {                              /* rx msg on CAN Ctrl       */
-      //memcpy(trameRx, CAN_RxMsg.data, sizeof(trameRx));
-			val_display (); 
+		if (CAN_RxRdy) {                              //rx msg on CAN Ctrl         		
 			CAN_RxRdy = 0;
-      
-			//val_Rx = CAN_RxMsg.data[0];
-			
-    }
-                                  /* display TX and RX values */
+			if (CAN_RxMsg.id == CAN_ID_CMD_SPEED){
+				memcpy(SpeedRx, CAN_RxMsg.data, sizeof(SpeedRx));}				
+			if (CAN_RxMsg.id == CAN_ID_CMD_DIR){
+				memcpy(DirRx, CAN_RxMsg.data, sizeof(DirRx));}
+		}	
+		
+		Speed_Cmd(SpeedRx);
+		/*
+		if (SpeedRx[0] == '0')
+		{
+			Motor_setSpeed(REAR_MOTOR_L, 0); //STOP
+			Motor_setSpeed(REAR_MOTOR_R, 0);				
+		}
+		else if (SpeedRx[0] == '1')
+		{
+			Motor_setSpeed(REAR_MOTOR_L, 0.5); //Default speed
+			Motor_setSpeed(REAR_MOTOR_R, 0.5);				
+		}
+		else if (SpeedRx[0] == '2')
+		{
+			Motor_setSpeed(REAR_MOTOR_L, 1); //Turbo speed
+			Motor_setSpeed(REAR_MOTOR_R, 1);
+		} */
+
+		Dir_Cmd(DirRx);		
+		/*
+		if (DirRx[0] == '0') //Position centrale des roues
+		{
+			Turn(132);
+		}
+		else if (DirRx[0] == '1') //Position à gauche des roues
+		{
+			Turn(150);
+		}
+		else if (DirRx[0] == '2') //Position à droite des roues
+		{
+			Turn(110);
+		}	*/		
   }
 }

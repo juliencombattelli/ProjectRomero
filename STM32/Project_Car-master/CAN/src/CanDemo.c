@@ -18,7 +18,6 @@
 #include <string.h>
 #include "stm32f10x.h"                            /* STM32F10x Definitions    */
 #include "LCD.h"                                  /* LCD function prototypes  */
-#include "ADC.h"                                  /* LCD function prototypes  */
 #include "CAN.h"                                  /* STM32 CAN adaption layer */
 #include "Timer_1234.h"														/* Timer driver */
 #include "it.h"																		/* IT driver */
@@ -47,10 +46,10 @@ volatile uint32_t msTicks;                        /* counts 1ms timeTicks     */
 /*----------------------------------------------------------------------------
   SysTick_Handler
  *----------------------------------------------------------------------------*/
-void SysTick_Handler(void) {
-  msTicks++;                        /* increment counter necessary in Delay() */
+/*void SysTick_Handler(void) {
+  msTicks++;                        //increment counter necessary in Delay() 
 }
-
+*/
 /*----------------------------------------------------------------------------
   delays number of tick Systicks (happens every 1 ms)
  *----------------------------------------------------------------------------*/
@@ -188,40 +187,38 @@ void canPeriodic (void) {
 /*----------------------------------------------------------------------------
   MAIN function
  *----------------------------------------------------------------------------*/
-int main (void)  {
-  
-	Timer_1234_Init (TIM1, 200000);								/* set Timer 2 every second */
-	Timer_Active_IT(TIM1, 0, canPeriodic);					/* Active Timer2 IT					*/
-	
-  ADC_Init ();                                    /* initialize A/D converter */
+//int main (void)  {
+//  
+//	Timer_1234_Init (TIM1, 200000);								/* set Timer 2 every second */
+//	Timer_Active_IT(TIM1, 0, canPeriodic);					/* Active Timer2 IT					*/
 
-  SysTick_Config(SystemCoreClock / 1000);         /* SysTick 1 msec IRQ       */
+//  SysTick_Config(SystemCoreClock / 1000);         /* SysTick 1 msec IRQ       */
 
-#ifdef __USE_LCD
-  lcd_init  ();                                   /* initialise LCD           */
-  lcd_clear ();
-  lcd_print ("MCBSTM32 CanDemo");
-  set_cursor (0, 1);
-  lcd_print ("  www.keil.com  ");
-  Delay (4000);                                   /* Wait for initial display */
+//#ifdef __USE_LCD
+//  lcd_init  ();                                   /* initialise LCD           */
+//  lcd_clear ();
+//  lcd_print ("MCBSTM32 CanDemo");
+//  set_cursor (0, 1);
+//  lcd_print ("  www.keil.com  ");
+//  Delay (4000);                                   /* Wait for initial display */
 
-  lcd_clear ();
-  lcd_print ("CAN at 500kbit/s");
-#endif
+//  lcd_clear ();
+//  lcd_print ("CAN at 500kbit/s");
+//#endif
 
-  can_Init ();                                    /* initialize CAN interface */
+//  can_Init ();                                    /* initialize CAN interface */
 
-  
-  while (1) {
-		
-    if (CAN_RxRdy) {                              /* rx msg on CAN Ctrl       */
-      //memcpy(trameRx, CAN_RxMsg.data, sizeof(trameRx));
-			val_display (); 
-			CAN_RxRdy = 0;
-      
-			//val_Rx = CAN_RxMsg.data[0];
-			
-    }
-                                  /* display TX and RX values */
-  }
-}
+//  
+//  while (1) {
+//		
+//    if (CAN_RxRdy) {                              /* rx msg on CAN Ctrl       */
+//      //memcpy(trameRx, CAN_RxMsg.data, sizeof(trameRx));
+//			val_display (); 
+//			CAN_RxRdy = 0;
+//      
+//			//val_Rx = CAN_RxMsg.data[0];
+//			
+//    }
+//                                  /* display TX and RX values */
+//  }
+//}
