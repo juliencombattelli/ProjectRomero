@@ -18,6 +18,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 
 import java.util.List;
 import java.util.UUID;
@@ -40,29 +41,32 @@ public class remote extends AppCompatActivity {
 
     String ice = "#94d3e2";
     String blue = "#0097bd";
-    String night =  "#002e39";
-    String purple =  "#842f7a";
+    String night = "#002e39";
+    String purple = "#842f7a";
 
     public Button connect;
     public Button auto;
     public Button start;
     public Button turbo;
     public JoystickView joystick;
+    public ImageView front;
+    public ImageView left;
+    public ImageView right;
+    public ImageView sonar;
 
 
     private BluetoothGatt btGatt;
     private BluetoothDevice btDevice;
     BluetoothGattCharacteristic stateCharacteristic;
     BluetoothGattCharacteristic joystickCharacteristic;
-    BluetoothGattCharacteristic batteryLevelCharacteristic;
     BluetoothGattCharacteristic alertCharacteristic;
+    BluetoothGattCharacteristic feedbackCharacteristic;
 
     Long uuidRemoteService = Long.parseLong("7DB9", 16);
     Long uuidJoystick = Long.parseLong("209D", 16);
     Long uuidState = Long.parseLong("D288", 16);
-    Long uuidBatteryLevel = Long.parseLong("2A19", 16);
-    Long uuidAlert = Long.parseLong("C15B", 16);
-
+    Long uuidAlert = Long.parseLong("DCB1", 16);
+    Long uuidFeedback = Long.parseLong("C15B", 16);
 
 
     @Override
@@ -71,11 +75,15 @@ public class remote extends AppCompatActivity {
         setContentView(R.layout.activity_remote);
         Log.i(TAG, "Create\n");
 
-        auto = (Button)findViewById(R.id.autonomous);
-        connect = (Button)findViewById(R.id.connect);
-        start = (Button)findViewById(R.id.move);
-        turbo = (Button)findViewById(R.id.turbo);
-        joystick = (JoystickView)findViewById(R.id.joystick);
+        auto = findViewById(R.id.autonomous);
+        connect = findViewById(R.id.connect);
+        start = findViewById(R.id.move);
+        turbo = findViewById(R.id.turbo);
+        joystick = findViewById(R.id.joystick);
+        front = findViewById(R.id.front);
+        left = findViewById(R.id.left);
+        right = findViewById(R.id.right);
+        sonar = findViewById(R.id.sonar);
 
         setBt();
 
@@ -88,7 +96,7 @@ public class remote extends AppCompatActivity {
         started = false;
         connected = false;
         autonomous = false;
-        turboed =false;
+        turboed = false;
         driving = false;
 
     }
@@ -154,46 +162,20 @@ public class remote extends AppCompatActivity {
 
     private void setConnectButton() {
         //Connect button
-        connect.setText(R.string.connect);
+        connexionChange(false);
         connect.getBackground().setColorFilter(Color.parseColor(night), PorterDuff.Mode.MULTIPLY);
-        auto.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
-        start.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
-        turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
-        joystick.setEnabled(false);
-
         Log.i(TAG, "Buttons\n");
 
         connect.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (connected) {
-                    auto.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
-                    start.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
-                    turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
-                    joystick.setEnabled(false);
-                    joystick.resetButtonPosition();
-                    joystick.invalidate();
-                    start.setText(R.string.start);
-                    connect.setText(R.string.connect);
-                    connected = false;
-                    started = false;
-                    turboed = false;
-                    autonomous = false;
-                    driving = false;
                     if (btGatt != null) {
                         btGatt.disconnect();
                     }
                     Log.i(TAG, "disconnect\n");
                 } else {
-                    auto.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
-                    start.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
-                    turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
-                    joystick.setEnabled(false);
-                    joystick.resetButtonPosition();
-                    joystick.invalidate();
-                    start.setText(R.string.start);
-                    connect.setText(R.string.disconnect);
-                    connected = true;
                     if (btGatt == null) {
+                        connect.setText(R.string.connecting);
                         btGatt = btDevice.connectGatt(remote.this, false, gattCallback);
                     }
                     Log.i(TAG, "connect\n");
@@ -204,7 +186,6 @@ public class remote extends AppCompatActivity {
 
     private void setStartButton() {
         //start button
-        start.setText(R.string.start);
         start.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (connected) {
@@ -213,25 +194,24 @@ public class remote extends AppCompatActivity {
                         started = false;
                         turboed = false;
                         driving = false;
+                        resetSymbols();
                         Log.i(TAG, "stop\n");
-                        joystick.setEnabled(false);
-                        joystick.resetButtonPosition();
-                        joystick.invalidate();
                         driving = false;
                         turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
                         if (btGatt != null) {
-                            sendState();
+                            sendStateValue(7);
                         }
                     } else {
                         start.setText(R.string.stop);
                         started = true;
+                        resetSymbols();
                         Log.i(TAG, "start\n");
-                        if (!autonomous){
+                        if (!autonomous) {
                             joystick.setEnabled(true);
                             joystick.invalidate();
                         }
                         if (btGatt != null) {
-                            sendState();
+                            sendStateValue(7);
                         }
                     }
                 }
@@ -251,14 +231,14 @@ public class remote extends AppCompatActivity {
                             turboed = false;
                             Log.i(TAG, "turbo off\n");
                             if (btGatt != null) {
-                                sendState();
+                                sendStateValue(7);
                             }
                         } else {
                             turbo.getBackground().setColorFilter(Color.parseColor(purple), PorterDuff.Mode.MULTIPLY);
                             turboed = true;
                             Log.i(TAG, "turbo on\n");
                             if (btGatt != null) {
-                                sendState();
+                                sendStateValue(7);
                             }
                         }
                     }
@@ -269,7 +249,6 @@ public class remote extends AppCompatActivity {
 
     private void setAutoButton() {
         //auto button
-        auto.setText(R.string.manual);
         auto.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (connected) {
@@ -279,15 +258,13 @@ public class remote extends AppCompatActivity {
                         started = false;
                         turboed = false;
                         driving = false;
+                        resetSymbols();
                         Log.i(TAG, "manual\n");
                         start.setText(R.string.start);
                         turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
-                        joystick.setEnabled(false);
-                        joystick.resetButtonPosition();
-                        joystick.invalidate();
                         driving = false;
                         if (btGatt != null) {
-                            sendState();
+                            sendStateValue(7);
                         }
                     } else {
                         auto.setText(R.string.autonomous);
@@ -295,15 +272,13 @@ public class remote extends AppCompatActivity {
                         started = false;
                         turboed = false;
                         driving = false;
+                        resetSymbols();
                         Log.i(TAG, "autonomous\n");
                         start.setText(R.string.start);
                         turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
-                        joystick.setEnabled(false);
-                        joystick.resetButtonPosition();
-                        joystick.invalidate();
                         driving = false;
                         if (btGatt != null) {
-                            sendState();
+                            sendStateValue(7);
                         }
                     }
                 }
@@ -318,30 +293,22 @@ public class remote extends AppCompatActivity {
             public void onMove(int angle, int strength) {
                 if (connected) {
                     if (started) {
-                        if (strength>0.5){
-                            if (!driving){
-                                driving = true;
-                                Log.i(TAG, "driving");
-                                if (btGatt != null) {
-                                    sendState();
-                                }
-                            }
-                            Log.i(TAG, "degrees:"+ angle +"\n");
-                            joystickCharacteristic.setValue(angle, FORMAT_UINT8, 0);
-                            joystickCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-                            btGatt.writeCharacteristic(joystickCharacteristic);
+                        if (strength > 50) {
+                            driving = true;
+                            Log.i(TAG, "degrees:" + angle + "\n");
+                            sendJoystickValue(angle);
                         }
-                        if (strength == 0){
+                        if (strength < 20 & driving) {
                             driving = false;
                             Log.i(TAG, "stopped");
                             if (btGatt != null) {
-                                sendState();
+                                sendStateValue(7);
                             }
                         }
                     }
                 }
             }
-        });
+        }, 200);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -351,10 +318,16 @@ public class remote extends AppCompatActivity {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                Log.i(TAG, "Connected to GATT server\n");
+                resetSymbols();
+                connexionChange(true);
                 connected = true;
+                Log.i(TAG, "Connected to GATT server\n");
+                btGatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
                 btGatt.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                resetSymbols();
+                connexionChange(false);
+                connected = false;
                 Log.i(TAG, "Disconnected from GATT server\n");
                 btGatt.close();
                 btGatt = null;
@@ -375,26 +348,28 @@ public class remote extends AppCompatActivity {
             // Loop through available GATT Services.
             for (BluetoothGattService gattService : services) {
                 uuid = gattService.getUuid().getMostSignificantBits() >> 32;
+                Log.i(TAG, uuid + "\n");
                 if (uuid == uuidRemoteService) {
                     Log.i(TAG, "found uuid\n");
                     List<BluetoothGattCharacteristic> gattCharacteristics = gattService.getCharacteristics();
                     // Loop through available Characteristics.
                     for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
                         uuid = gattCharacteristic.getUuid().getMostSignificantBits() >> 32;
+                        Log.i(TAG, uuid + "\n");
                         if (uuid == uuidJoystick) {
                             joystickCharacteristic = gattCharacteristic;
                             Log.i(TAG, "found joystick\n");
                         } else if (uuid == uuidState) {
                             stateCharacteristic = gattCharacteristic;
                             Log.i(TAG, "found state\n");
-                        } else if (uuid == uuidBatteryLevel) {
-                            batteryLevelCharacteristic = gattCharacteristic;
-                            enableNotification(true, btGatt, batteryLevelCharacteristic);
-                            Log.i(TAG, "found battery level\n");
                         } else if (uuid == uuidAlert) {
                             alertCharacteristic = gattCharacteristic;
-                            enableNotification(true, btGatt, alertCharacteristic);
                             Log.i(TAG, "found alert\n");
+                            enableNotification(btGatt, alertCharacteristic);
+                        } else if (uuid == uuidFeedback) {
+                            feedbackCharacteristic = gattCharacteristic;
+                            Log.i(TAG, "found feedback\n");
+                            enableNotification(btGatt, feedbackCharacteristic);
                         }
                     }
                 }
@@ -411,48 +386,169 @@ public class remote extends AppCompatActivity {
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic,
                                           int status) {
-            //Log.i(TAG, "setValue\n");
+            Log.i(TAG, "wrote\n");
         }
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            if (started) {
-                final int data = characteristic.getIntValue(FORMAT_UINT8, 0);
+            Log.i(TAG, "notification!");
+            final int data = characteristic.getIntValue(FORMAT_UINT8, 0);
+            if (characteristic == feedbackCharacteristic) {
                 Log.i(TAG, "data: " + data + "\n");
+                changeDir(data);
             }
         }
     };
 
     ////////////////////////////////////////////////////////////////////////////////
     //functions
-    private void sendState(){
-        int state;
+    private void sendStateValue(int joystick_value) {
+        int stateCode;
+        int message;
         if (!turboed & !driving & !autonomous & started)
-            state = 1;
+            stateCode = 1;
         else if (!turboed & driving & !autonomous & started)
-            state = 2;
+            stateCode = 2;
         else if (turboed & !driving & !autonomous & started)
-            state = 3;
+            stateCode = 3;
         else if (turboed & driving & !autonomous & started)
-            state = 4;
+            stateCode = 4;
         else if (!turboed & !driving & autonomous & !started)
-            state = 5;
+            stateCode = 5;
         else if (!turboed & !driving & autonomous & started)
-            state = 6;
+            stateCode = 6;
         else
-            state = 0;
+            stateCode = 0;
 
-        Log.i(TAG, "state: " + state + "\n");
-        stateCharacteristic.setValue(state, FORMAT_UINT8, 0);
-        stateCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+        Log.i(TAG, "state: " + stateCode + "\n");
+        Log.i(TAG, "joystick: " + joystick_value + "\n");
+        message = stateCode << 5;
+        message = message + joystick_value;
+        Log.i(TAG, "complete message: " + message + "\n");
+
+        //todo comment
+        stateCharacteristic.setValue(message, FORMAT_UINT8, 0);
+        stateCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
         btGatt.writeCharacteristic(stateCharacteristic);
     }
 
-    private void enableNotification(boolean enable, BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-        gatt.setCharacteristicNotification(characteristic, enable);
-        Log.i(TAG, "notifications\n");
-        BluetoothGattDescriptor descriptor = characteristic.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"));
-        descriptor.setValue(enable ? BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
+    private void sendJoystickValue(int joystick_angle) {
+        int joystick_value;
+        if (joystick_angle <= 20 | joystick_angle > 340)
+            joystick_value = 0;
+        else if (joystick_angle <= 65 & joystick_angle > 20)
+            joystick_value = 1;
+        else if (joystick_angle <= 110 & joystick_angle > 65)
+            joystick_value = 2;
+        else if (joystick_angle <= 155 & joystick_angle > 110)
+            joystick_value = 3;
+        else if (joystick_angle <= 200 & joystick_angle > 155)
+            joystick_value = 4;
+        else
+            joystick_value = 7;
+
+        sendStateValue(joystick_value);
+    }
+
+    private void enableNotification(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+        gatt.setCharacteristicNotification(characteristic, true);
+        Log.i(TAG, "notification\n");
+        // 0x2902 org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
+        UUID uuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+        BluetoothGattDescriptor descriptor = characteristic.getDescriptor(uuid);
+        descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
         gatt.writeDescriptor(descriptor);
     }
+
+
+    private void changeDir(final int direction_value) {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                switch (direction_value) {
+                    case 0:
+                        front.setImageResource(R.drawable.ic_arrow_front_ice);
+                        right.setImageResource(R.drawable.ic_arrow_right_blue);
+                        left.setImageResource(R.drawable.ic_arrow_left_ice);
+                        break;
+                    case 1:
+                        front.setImageResource(R.drawable.ic_arrow_front_ice);
+                        right.setImageResource(R.drawable.ic_arrow_right_blue);
+                        left.setImageResource(R.drawable.ic_arrow_left_ice);
+                        break;
+                    case 2:
+                        front.setImageResource(R.drawable.ic_arrow_front_blue);
+                        right.setImageResource(R.drawable.ic_arrow_right_ice);
+                        left.setImageResource(R.drawable.ic_arrow_left_ice);
+                        break;
+                    case 3:
+                        front.setImageResource(R.drawable.ic_arrow_front_ice);
+                        right.setImageResource(R.drawable.ic_arrow_right_ice);
+                        left.setImageResource(R.drawable.ic_arrow_left_blue);
+                        break;
+                    case 4:
+                        front.setImageResource(R.drawable.ic_arrow_front_ice);
+                        right.setImageResource(R.drawable.ic_arrow_right_ice);
+                        left.setImageResource(R.drawable.ic_arrow_left_blue);
+                        break;
+                    case 7:
+                        front.setImageResource(R.drawable.ic_arrow_front_ice);
+                        right.setImageResource(R.drawable.ic_arrow_right_ice);
+                        left.setImageResource(R.drawable.ic_arrow_left_ice);
+                        break;
+                    default:
+                        front.setImageResource(R.drawable.ic_arrow_front_ice);
+                        right.setImageResource(R.drawable.ic_arrow_right_ice);
+                        left.setImageResource(R.drawable.ic_arrow_left_ice);
+                        break;
+
+                }
+            }
+        });
+    }
+
+    private void connexionChange(boolean connexion) {
+        if (connexion) {
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    auto.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
+                    start.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
+                    turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
+                    start.setText(R.string.start);
+                    auto.setText(R.string.manual);
+                    connect.setText(R.string.disconnect);
+                    started = false;
+                    turboed = false;
+                    autonomous = false;
+                    driving = false;
+                }
+            });
+        } else {
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    auto.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
+                    start.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
+                    turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
+                    start.setText(R.string.start);
+                    auto.setText(R.string.manual);
+                    connect.setText(R.string.connect);
+                }
+            });
+
+        }
+    }
+
+    public void resetSymbols() {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                joystick.setEnabled(false);
+                joystick.resetButtonPosition();
+                joystick.invalidate();
+                front.setImageResource(R.drawable.ic_arrow_front_ice);
+                right.setImageResource(R.drawable.ic_arrow_right_ice);
+                left.setImageResource(R.drawable.ic_arrow_left_ice);
+                sonar.setImageResource(R.drawable.ic_sonar);
+            }
+        });
+    }
+
 }
