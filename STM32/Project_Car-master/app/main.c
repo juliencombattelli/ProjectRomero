@@ -174,19 +174,20 @@ void Speed_Cmd(char *cmd){
 		
 		
 void Dir_Cmd(char *cmd){
-	if (DirRx[0] == '0'){				//Position centrale des roues
+	if (DirRx[0] == 0){				//Position centrale des roues
 		Turn(132);} 															
-	else if (DirRx[0] == '1')	{	//Position à gauche des roues		
+	else if (DirRx[0] == 1)	{	//Position à gauche des roues		
 		Turn(150);} 
-	else if (DirRx[0] == '2') { //Position à droite des roues
+	else if (DirRx[0] == 2) { //Position à droite des roues
 		Turn(110);}}
 		
 /*----------------------------------------------------------------------------
   MAIN function
  *----------------------------------------------------------------------------*/
-
+uint8_t angle;
+		
 int main (void)  {
-  uint8_t angle;
+  
 	
 	Timer_1234_Init (TIM2, 200000);								/* set Timer 2 every second */
 	Timer_Active_IT(TIM2, 0, canPeriodic);					/* Active Timer2 IT					*/
@@ -211,37 +212,37 @@ int main (void)  {
 				memcpy(DirRx, CAN_RxMsg.data, sizeof(DirRx));}
 		}	
 		
-		Speed_Cmd(SpeedRx);
-		/*
-		if (SpeedRx[0] == '0')
+		//Speed_Cmd(SpeedRx);
+		
+		if (SpeedRx[0] == 0)
 		{
 			Motor_setSpeed(REAR_MOTOR_L, 0); //STOP
 			Motor_setSpeed(REAR_MOTOR_R, 0);				
 		}
-		else if (SpeedRx[0] == '1')
+		else if (SpeedRx[0] == 1)
 		{
 			Motor_setSpeed(REAR_MOTOR_L, 0.5); //Default speed
 			Motor_setSpeed(REAR_MOTOR_R, 0.5);				
 		}
-		else if (SpeedRx[0] == '2')
+		else if (SpeedRx[0] == 2)
 		{
 			Motor_setSpeed(REAR_MOTOR_L, 1); //Turbo speed
 			Motor_setSpeed(REAR_MOTOR_R, 1);
-		} */
+		} 
 
-		Dir_Cmd(DirRx);		
-		/*
-		if (DirRx[0] == '0') //Position centrale des roues
+		//Dir_Cmd(DirRx);		
+		
+		if (DirRx[0] == 0) //Position centrale des roues 127
 		{
-			Turn(132);
+			Turn(127);
 		}
-		else if (DirRx[0] == '1') //Position à gauche des roues
+		else if (DirRx[0] == 1) //Position à gauche des roues 155
 		{
 			Turn(150);
 		}
-		else if (DirRx[0] == '2') //Position à droite des roues
+		else if (DirRx[0] == 2) //Position à droite des roues 106
 		{
 			Turn(110);
-		}	*/		
+		}			
   }
 }
