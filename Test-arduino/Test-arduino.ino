@@ -35,7 +35,6 @@ void setup() {
 
   // assign event handlers for characteristic
   state.setEventHandler(BLEWritten, stateCharacteristicWritten);
-  state.setValue(0);
 
   // start advertising
   BLE.advertise();
@@ -62,18 +61,11 @@ void blePeripheralDisconnectHandler(BLEDevice central) {
 
 void stateCharacteristicWritten(BLEDevice central, BLECharacteristic characteristic) {
   // central wrote new value to characteristic
-  Serial.print("State event, written: ");
   int current_state = state.value() >> 5;
-  int current_direction = state.value() & 0xF;
+  Serial.print("State: ");
   Serial.println(current_state);
+  int current_direction = state.value() & 0x7;
 
-  if (current_direction != dir){
-    dir = current_direction;
-    Serial.print("direction: ");
-    Serial.println(dir);
-    feedback.setValue(dir);
-  }
-  
   switch (current_state) {
     case 0:
       idle = false;
@@ -119,21 +111,46 @@ void stateCharacteristicWritten(BLEDevice central, BLECharacteristic characteris
       break;
   }
 
-  if (!moving){
-    if (dir){
-      dir = 7;
-      Serial.print("direction: ");
-      Serial.println(dir);
-      feedback.setValue(dir);    
+  if (current_direction != dir) {
+    dir = current_direction;
+    Serial.print("Direction: ");
+    Serial.println(dir);
+
+    if (!moving) {
+      if (dir != 7) {
+        dir = 7;
+      }
     }
+    int ret;
+    switch (dir) {
+      case 0:
+      case 1:
+        ret = 1;
+        break;
+      case 2:
+        ret = 2;
+        break;
+      case 3:
+      case 4:
+        ret = 3;
+        break;
+      case 7:
+      default:
+        ret = 0;
+        break;
+    }
+    ret = ret << 1;
+    Serial.print("Retour: ");
+    Serial.println(ret);
+    feedback.setValue(ret);
+
   }
-   
   /*Serial.print("idle: ");
-  Serial.println(idle);
-  Serial.print("mode: ");
-  Serial.println(mode);
-  Serial.print("moving: ");
-  Serial.println(moving);
-  Serial.print("turbo: ");
-  Serial.println(turbo);*/
+    Serial.println(idle);
+    Serial.print("mode: ");
+    Serial.println(mode);
+    Serial.print("moving: ");
+    Serial.println(moving);
+    Serial.print("turbo: ");
+    Serial.println(turbo);*/
 }
