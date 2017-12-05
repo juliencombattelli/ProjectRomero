@@ -12,12 +12,12 @@
 
 //create the ultrasound data frame
 void create_ultrasound_frame(data_ultrasound data, char * frame) {
-	frame[0] = data.bytes_ultrasound[0] ;
-	frame[1] = data.bytes_ultrasound[1] ;
-	frame[2] = '\0' ;
-	frame[3] = '\0' ;
-	frame[4] = '\0' ;
-	frame[5] = '\0' ;
+	frame[0] = data.ultrasound.bytes_ultrasound[0] ;
+	frame[1] = data.ultrasound.bytes_ultrasound[1] ;
+	frame[2] = data.ultrasound.bytes_ultrasound[2] ;
+	frame[3] = data.ultrasound.bytes_ultrasound[3] ;
+	frame[4] = data.ultrasound.bytes_ultrasound[4] ;
+	frame[5] = data.ultrasound.bytes_ultrasound[5] ;
 	frame[6] = '\0' ;
 	frame[7] = '\0' ;
 }	

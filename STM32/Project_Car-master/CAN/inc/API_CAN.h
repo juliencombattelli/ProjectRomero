@@ -19,10 +19,9 @@
 typedef struct data_ultrasound
 {		
 	union {
-		uint8_t num_ultrasound ; 
-		unsigned char bytes_ultrasound ; 
+		uint8_t num_ultrasound[6] ; 
+		unsigned char bytes_ultrasound[6] ; 
 	} ultrasound ; 
-	unsigned char bytes_ultrasound[2] ; 
 	
 } data_ultrasound  ;
 

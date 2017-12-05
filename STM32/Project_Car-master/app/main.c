@@ -76,8 +76,14 @@ void can_Init (void) {
   CAN_waitReady ();                               /* wait til tx mbx is empty */
 	
 	//TODO: TO DELETE
-	VAL_ULTRA.bytes_ultrasound[0] = '0'; 
-	VAL_ULTRA.bytes_ultrasound[1] = '1'; 
+	VAL_ULTRA.ultrasound.bytes_ultrasound[0] = '0'; 
+	VAL_ULTRA.ultrasound.bytes_ultrasound[1] = '1'; 
+	VAL_ULTRA.ultrasound.bytes_ultrasound[2] = '2'; 
+	VAL_ULTRA.ultrasound.bytes_ultrasound[3] = '3'; 
+	VAL_ULTRA.ultrasound.bytes_ultrasound[4] = '4'; 
+	VAL_ULTRA.ultrasound.bytes_ultrasound[5] = '5'; 
+
+
 
 }
 
