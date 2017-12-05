@@ -1,3 +1,4 @@
+
 PACKAGECONFIG_append = " networkd resolved"
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/files:"
@@ -14,5 +15,3 @@ do_install_append() {
         install -m 0755 ${WORKDIR}/eth.network ${D}${sysconfdir}/systemd/network
   fi
 }
-
-
