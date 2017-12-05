@@ -18,8 +18,11 @@
 //type must be define
 typedef struct data_ultrasound
 {		
-	
-	unsigned char bytes_ultrasound[6] ; 
+	union {
+		uint8_t num_ultrasound ; 
+		unsigned char bytes_ultrasound ; 
+	} ultrasound ; 
+	unsigned char bytes_ultrasound[2] ; 
 	
 } data_ultrasound  ;
 
@@ -27,8 +30,8 @@ typedef struct data_ultrasound
 typedef struct data_potentiometer
 {
 	union {
-		short num_potentiometer;
-		unsigned char  bytes_potentiometer[2];
+		uint8_t num_potentiometer;
+		unsigned char  bytes_potentiometer;
 	}potentiometer;
 	
 } data_potentiometer ; 
@@ -37,16 +40,21 @@ typedef struct data_potentiometer
 typedef struct data_odometer 
 {
 		union {
-			short num_left_odometer;
-			unsigned char  bytes_left_odometer[2];
-		}left_odometer;
-		
-		union {
-			short num_right_odometer;
-			unsigned char  bytes_right_odometer[2];
-		}right_odometer;
+			uint8_t num_odometer;
+			unsigned char  bytes_odometer;
+		}odometer;
 		
 } data_odometer ; 
+
+//data structure for battery 
+typedef struct data_battery
+{
+	
+		union {
+			uint8_t num_battery ; 
+			unsigned char bytes_battery ; 
+		} battery ; 
+} data_battery ;  
 
 
 //Raspy -> STM32
