@@ -21,6 +21,7 @@
 #include "us_sensors.h"
 #include "direction.h"
 
+#include "battery.h" 
 
 #include "data_interface.h"
 #include "mirroring.h"
@@ -83,6 +84,7 @@ void Manager_Init(void) {
 			
 	  Direction_QuickInit();
 	
+		Battery_QuickInit() ; 
 		
     System_Time_QuickInit();
 }

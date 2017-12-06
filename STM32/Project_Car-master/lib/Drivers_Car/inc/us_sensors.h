@@ -37,5 +37,6 @@ extern struct sensor sensors[6];
  void US_StartAcq(void);
  void US_StopAcq(void);
  
+extern float US_CalcDistance(uint8_t sensor_position);
 
 #endif // _US_SENSORS_H
