@@ -170,39 +170,39 @@ void * ReceiveData()
             exit(1) ;
         }
         
-        /*if (frame.can_id == 0x001)
-         {
-         printf("Reception Data ultrasons \n") ;
-         printf("%d bytes \n",nbytes) ;
-         printf("id : %d\n",frame.can_id) ;
-         printf("dlc : %d\n",frame.can_dlc) ;
-         printf("data0 : %x\n",frame.data[0]) ;
-         printf("data1 : %x\n",frame.data[1]) ;
-         printf("data2 : %x\n",frame.data[2]) ;
-         printf("data3 : %x\n",frame.data[3]) ;
-         printf("data4 : %x\n",frame.data[4]) ;
-         printf("data5 : %x\n",frame.data[5]) ;
+        if (frame.can_id == 0x001) {
+             printf("Reception Data ultrasons \n") ;
+             printf("%d bytes \n",nbytes) ;
+             printf("id : %d\n",frame.can_id) ;
+             printf("dlc : %d\n",frame.can_dlc) ;
+            
+             data_ultrasound data_us = frame.data ;
+             printf("data0 : %d\n",data_us.ultrasound.num_ultrasound[0]) ;
+             printf("data1 : %d\n",data_us.ultrasound.num_ultrasound[1]) ;
+             printf("data2 : %d\n",data_us.ultrasound.num_ultrasound[2]) ;
+             printf("data3 : %d\n",data_us.ultrasound.num_ultrasound[3]) ;
+             printf("data4 : %d\n",data_us.ultrasound.num_ultrasound[4]) ;
+             printf("data5 : %d\n",data_us.ultrasound.num_ultrasound[5]) ;
          }
-         if (frame.can_id == 0x007)
-         {
-         printf("Reception Data potentiometre \n") ;
-         printf("%d bytes \n",nbytes) ;
-         printf("id : %d\n",frame.can_id) ;
-         printf("dlc : %d\n",frame.can_dlc) ;
-         printf("data0 : %x\n",frame.data[0]) ;
-         printf("data1 : %x\n",frame.data[1]) ;
+         if (frame.can_id == 0x007) {
+             printf("Reception speed data \n") ;
+             printf("%d bytes \n",nbytes) ;
+             printf("id : %d\n",frame.can_id) ;
+             printf("dlc : %d\n",frame.can_dlc) ;
+             
+             data_odometer data_speed = frame.data ;
+             printf("data0 : %x\n",frame.data[0]) ;
+             printf("data1 : %x\n",frame.data[1]) ;
+             
          }
-         if (frame.can_id == 0x006)
-         {
-         printf("Reception Data capteurs effet hall \n") ;
-         printf("%d bytes \n",nbytes) ;
-         printf("id : %d\n",frame.can_id) ;
-         printf("dlc : %d\n",frame.can_dlc) ;
-         printf("data0 : %x\n",frame.data[0]) ; //left odometer
-         printf("data1 : %x\n",frame.data[1]) ; //left odometer
-         printf("data2 : %x\n",frame.data[2]) ; //right odometer
-         printf("data3 : %x\n",frame.data[3]) ; //right odometer
-         }*/
+         if (frame.can_id == 0x006) {
+             printf("Reception direction data \n") ;
+             printf("%d bytes \n",nbytes) ;
+             printf("id : %d\n",frame.can_id) ;
+             printf("dlc : %d\n",frame.can_dlc) ;
+             printf("data0 : %x\n",frame.data[0]) ;
+             printf("data1 : %x\n",frame.data[1]) ;
+         }
     }
 }
 
