@@ -26,13 +26,13 @@
  data_ultrasound VAL_ULTRA ; 
  data_odometer VAL_ODOMETER ;
  data_potentiometer VAL_POTEN ;
+ data_battery VAL_BAT ;
 
 /*-------------------------------------------
 ---------------------------------------------
 --------------------------------------------*/
 
 char text[17];
-uint8_t battery_level ; 
 
 unsigned int val_Tx = 0, val_Rx = 0;              /* Globals used for display */
 char trame[8];
@@ -69,12 +69,9 @@ void Delay (uint32_t dlyTicks) {
  *----------------------------------------------------------------------------*/
 void can_Init (void) {
 
-  CAN_setup ();                                   /* setup CAN Controller     */
-  CAN_wrFilter (CAN_ID_RMT_ULTRASOUND, STANDARD_FORMAT);             /* Enable reception of msgs */
+  CAN_setup ();                                   /* setup CAN Controller     */  
 	CAN_wrFilter (CAN_ID_CMD_DIR, STANDARD_FORMAT);             /* Enable reception of msgs */
 	CAN_wrFilter (CAN_ID_CMD_SPEED, STANDARD_FORMAT);             /* Enable reception of msgs */
-	CAN_wrFilter (CAN_ID_RMT_DIR, STANDARD_FORMAT);             /* Enable reception of msgs */
-	CAN_wrFilter (CAN_ID_RMT_SPEED, STANDARD_FORMAT);             /* Enable reception of msgs */
 	
   CAN_start ();                                   /* start CAN Controller   */
 	CAN_TxMsg.id = CAN_ID_ULTRASOUND;
@@ -233,7 +230,20 @@ void canPeriodic (void) {
 	 *-----------------------------------------*/
 		case 2:
 			//TODO: CAN part 
-			battery_level = Battery_get() ; 
+			CAN_TxMsg.id = CAN_ID_BATTERY ; 						/* initialize message to send   */
+			for (i = 0; i < 8; i++) CAN_TxMsg.data[i] = 0;
+			CAN_TxMsg.len = 8;
+			CAN_TxMsg.format = STANDARD_FORMAT;
+			CAN_TxMsg.type = DATA_FRAME;				
+		
+			VAL_BAT.battery.num_battery = Battery_get() ; 
+			create_battery_frame(VAL_BAT,trame) ; 
+			CAN_waitReady() ; 
+			CAN_TxRdy2 = 0;    													/* CAN HW unready to transmit message mailbox 2*/
+			
+			memcpy(CAN_TxMsg.data, trame, sizeof(trame));
+			CAN_wrMsg (&CAN_TxMsg);
+		
 			periodic_modulo = 0;
 			break;
 	}		
