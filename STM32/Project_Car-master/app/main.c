@@ -78,15 +78,6 @@ void can_Init (void) {
   CAN_start ();                                   /* start CAN Controller   */
 	CAN_TxMsg.id = CAN_ID_ULTRASOUND;
   CAN_waitReady ();                               /* wait til tx mbx is empty */
-	
-	//TODO: TO DELETE
-	VAL_ULTRA.ultrasound.bytes_ultrasound[0] = '0'; 
-	VAL_ULTRA.ultrasound.bytes_ultrasound[1] = '1'; 
-	VAL_ULTRA.ultrasound.bytes_ultrasound[2] = '2'; 
-	VAL_ULTRA.ultrasound.bytes_ultrasound[3] = '3'; 
-	VAL_ULTRA.ultrasound.bytes_ultrasound[4] = '4'; 
-	VAL_ULTRA.ultrasound.bytes_ultrasound[5] = '5'; 
-
 }
 
  
@@ -94,7 +85,7 @@ void canPeriodic (void) {
 	int i;
 	uint8_t angle_direction, car_dist ; 
 	uint8_t speed = (uint8_t)((SpeedSensor_get(SPEED_CM_S,SENSOR_L)+SpeedSensor_get(SPEED_CM_S,SENSOR_R))/2.0) ;
-		
+	int dist;
 	/*------------------------------------------
 	 * Send an ultrasound frame every 200ms
 	 *-----------------------------------------*/
@@ -109,50 +100,84 @@ void canPeriodic (void) {
 	car_dist = speed/5; // Distance of the car in 200 ms 
 		
 	//Detect an obstacle at less than 2 meters and get the obstacle distance
+	
 	if (SL < 200) {
-		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += 1; 
-		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += ((int)(SL/2)) << 2;
-	}		
+		VAL_ULTRA.ultrasound.bytes_ultrasound[0] = 1; 
+		dist = (((int)(SL)) >> 1) << 2;
+		if (dist > 252) {
+			dist = 252;
+		}
+		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += dist;
+		if (Prev_SL-SL > car_dist + 2){
+			VAL_ULTRA.ultrasound.bytes_ultrasound[0] += 2; 
+		}
+	}
+	else {VAL_ULTRA.ultrasound.bytes_ultrasound[0] = 0;}
+	
 	if (FSL < 200) {
-		VAL_ULTRA.ultrasound.bytes_ultrasound[1] += 1; 
-		VAL_ULTRA.ultrasound.bytes_ultrasound[1] += ((int)(FSL/2)) << 2;
-	}		
+		VAL_ULTRA.ultrasound.bytes_ultrasound[1] = 1;
+		dist = (((int)(FSL)) >> 1) << 2;
+		if (dist > 252) {
+			dist = 252;
+		}		
+		VAL_ULTRA.ultrasound.bytes_ultrasound[1] += dist;
+		if (Prev_FSL-FSL > car_dist){
+			VAL_ULTRA.ultrasound.bytes_ultrasound[1] += 2; 
+		}
+	}	
+	else {VAL_ULTRA.ultrasound.bytes_ultrasound[1] = 0;}	
+	
 	if (FL < 200) {
-		VAL_ULTRA.ultrasound.bytes_ultrasound[2] += 1; 
-		VAL_ULTRA.ultrasound.bytes_ultrasound[2] += ((int)(FL/2)) << 2;
+		VAL_ULTRA.ultrasound.bytes_ultrasound[2] = 1; 
+		dist = (((int)(FL)) >> 1) << 2;
+		if (dist > 252) {
+			dist = 252;
+		}
+		VAL_ULTRA.ultrasound.bytes_ultrasound[2] += dist;
+		if (Prev_FL-FL > car_dist){
+			VAL_ULTRA.ultrasound.bytes_ultrasound[2] += 2; 
+		}
 	}		
+	else {VAL_ULTRA.ultrasound.bytes_ultrasound[2] = 0;}
+	
 	if (FR < 200) {
-		VAL_ULTRA.ultrasound.bytes_ultrasound[3] += 1; 
-		VAL_ULTRA.ultrasound.bytes_ultrasound[3] += ((int)(FR/2)) << 2;
-	}		
+		VAL_ULTRA.ultrasound.bytes_ultrasound[3] = 1; 
+		dist = (((int)(FR)) >> 1) << 2;
+		if (dist > 252) {
+			dist = 252;
+		}
+		VAL_ULTRA.ultrasound.bytes_ultrasound[3] += dist;
+		if (Prev_FR-FR > car_dist){
+			VAL_ULTRA.ultrasound.bytes_ultrasound[3] += 2; 
+		}
+	}
+	else {VAL_ULTRA.ultrasound.bytes_ultrasound[3] = 0;}
+	
 	if (FSR < 200) {
-		VAL_ULTRA.ultrasound.bytes_ultrasound[4] += 1; 
-		VAL_ULTRA.ultrasound.bytes_ultrasound[4] += ((int)(FSR/2)) << 2;
+		VAL_ULTRA.ultrasound.bytes_ultrasound[4] = 1;
+		dist = (((int)(FSR)) >> 1) << 2;
+		if (dist > 252) {
+			dist = 252;
+		}		
+		VAL_ULTRA.ultrasound.bytes_ultrasound[4] += dist;
+		if (Prev_FSR-FSR > car_dist){
+			VAL_ULTRA.ultrasound.bytes_ultrasound[4] += 2; 
+		}
 	}		
+	else {VAL_ULTRA.ultrasound.bytes_ultrasound[4] = 0;}
+	
 	if (SR < 200) {
-		VAL_ULTRA.ultrasound.bytes_ultrasound[5] += 1; 
-		VAL_ULTRA.ultrasound.bytes_ultrasound[5] += ((int)(SR/2)) << 2;
-	}		
-	//Check if the obstacle is moving
-	if (Prev_SL-SL > car_dist){
-		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += 2; 
-	}
-	if (Prev_FSL-FSL > car_dist){
-		VAL_ULTRA.ultrasound.bytes_ultrasound[1] += 2; 
-	}
-	if (Prev_FL-FL > car_dist){
-		VAL_ULTRA.ultrasound.bytes_ultrasound[2] += 2; 
-	}
-	if (Prev_FR-FR > car_dist){
-		VAL_ULTRA.ultrasound.bytes_ultrasound[3] += 2; 
-	}
-	if (Prev_FSR-FSR > car_dist){
-		VAL_ULTRA.ultrasound.bytes_ultrasound[4] += 2; 
-	}
-	if (Prev_SR-SR > car_dist){
-		VAL_ULTRA.ultrasound.bytes_ultrasound[5] += 2; 
-	}
-		
+		VAL_ULTRA.ultrasound.bytes_ultrasound[5] = 1; 
+		dist = (((int)(SR)) >> 1) << 2;
+		if (dist > 252) {
+			dist = 252;
+		}
+		VAL_ULTRA.ultrasound.bytes_ultrasound[5] += dist;
+		if (Prev_SR-SR > car_dist){
+			VAL_ULTRA.ultrasound.bytes_ultrasound[5] += 2; 
+		}		
+	}	
+	else {VAL_ULTRA.ultrasound.bytes_ultrasound[5] = 0;}
 	
 	Prev_FSL = FSL;
 	Prev_FL  = FL;
@@ -267,28 +292,34 @@ void Turn(uint8_t deg){
 	else if (deg < Direction_get() - 5){
 		FrontMotor_turn(RIGHT);}
 	else {
-		FrontMotor_turn(NONE);}}
+		Motor_Disable(FRONT_MOTOR);}}
 
 		
 void Speed_Cmd(char *cmd){
 	if (cmd[0] == '0'){ 										//STOP
 		Motor_setSpeed(REAR_MOTOR_L, 0); 
-		Motor_setSpeed(REAR_MOTOR_R, 0);}
-	else if (cmd[0] == '1') { 							//Default speed
+		Motor_setSpeed(REAR_MOTOR_R, 0);}	
+	else if (cmd[0] == '1') { 							//Default speed		
 		Motor_setSpeed(REAR_MOTOR_L, 0.5); 
 		Motor_setSpeed(REAR_MOTOR_R, 0.5);}
-	else if (cmd[0] == '2') {     					//Turbo speed
+	else if (cmd[0] == '2') {     					//Turbo speed		
 		Motor_setSpeed(REAR_MOTOR_L, 1); 
 		Motor_setSpeed(REAR_MOTOR_R, 1);}}	
 		
 		
-void Dir_Cmd(char *cmd){
-	if (DirRx[0] == 0){				//Position centrale des roues
-		Turn(132);} 															
-	else if (DirRx[0] == 1)	{	//Position à gauche des roues		
-		Turn(150);} 
-	else if (DirRx[0] == 2) { //Position à droite des roues
-		Turn(110);}}
+void Dir_Cmd(char *cmd, uint8_t angle){
+	if (DirRx[0] == '0'){				//Position centrale des roues
+		if (angle >= 127 || angle <= 137){
+				Motor_Enable(FRONT_MOTOR);
+				Turn(132);}} 															
+	else if (DirRx[0] == '1')	{	//Position à gauche des roues		
+		if (angle >= 145 || angle <= 155){
+				Motor_Enable(FRONT_MOTOR);
+				Turn(150);}} 
+	else if (DirRx[0] == '2') { //Position à droite des roues
+		if (angle >= 105 || angle <= 115){
+				Motor_Enable(FRONT_MOTOR);
+				Turn(110);}}}
 		
 /*----------------------------------------------------------------------------
   MAIN function
@@ -297,7 +328,7 @@ uint8_t angle;
 
 		
 int main (void)  {
-  SysTick_Config(SystemCoreClock / 1000);         /* SysTick 1 msec IRQ       */
+    SysTick_Config(SystemCoreClock / 1000);         /* SysTick 1 msec IRQ       */
 
 	Manager_Init();
 	Motor_QuickInit(REAR_MOTOR_L);
@@ -313,7 +344,10 @@ int main (void)  {
 	FR  = US_CalcDistance(4);
 	SR  = US_CalcDistance(5);
 	
-  Timer_1234_Init (TIM2, 200000);								  /* set Timer 2 every second */
+	SpeedRx[0] = '0';
+	DirRx[0] = '0';
+	
+  Timer_1234_Init (TIM2, 200000);								  /* set Timer 2 every 200ms */
 	Timer_Active_IT(TIM2, 0, canPeriodic);					/* Active Timer2 IT					*/
 	
   while (1) {
@@ -337,36 +371,49 @@ int main (void)  {
 		
 		//Speed_Cmd(SpeedRx);
 		
-		if (SpeedRx[0] == 0)
+		if (SpeedRx[0] == '0')
 		{
 			Motor_setSpeed(REAR_MOTOR_L, 0); //STOP
-			Motor_setSpeed(REAR_MOTOR_R, 0);				
+			Motor_setSpeed(REAR_MOTOR_R, 0);	
+			
 		}
-		else if (SpeedRx[0] == 1)
+		else if (SpeedRx[0] == '1')
 		{
+			
 			Motor_setSpeed(REAR_MOTOR_L, 0.5); //Default speed
 			Motor_setSpeed(REAR_MOTOR_R, 0.5);				
 		}
-		else if (SpeedRx[0] == 2)
+		else if (SpeedRx[0] == '2')
 		{
+			
 			Motor_setSpeed(REAR_MOTOR_L, 1); //Turbo speed
 			Motor_setSpeed(REAR_MOTOR_R, 1);
 		} 
 
-		//Dir_Cmd(DirRx);		
+		//Dir_Cmd(DirRx, angle);		
 		
-		if (DirRx[0] == 0) //Position centrale des roues 127
+		if (DirRx[0] == '0') //Position centrale des roues 127
 		{
-			Turn(127);
+			if (angle >= 127 || angle <= 137){
+				Motor_Enable(FRONT_MOTOR);
+				Turn(132);
+			}
+			
 		}
-		else if (DirRx[0] == 1) //Position à gauche des roues 155
+		else if (DirRx[0] == '1') //Position à gauche des roues 155
 		{
-			Turn(150);
+			if (angle >= 145 || angle <= 155){
+				Motor_Enable(FRONT_MOTOR);
+				Turn(150);
+			}
+			
 		}
-		else if (DirRx[0] == 2) //Position à droite des roues 106
+		else if (DirRx[0] == '2') //Position à droite des roues 106
 		{
-			Turn(110);
+			if (angle >= 105 || angle <= 115){
+				Motor_Enable(FRONT_MOTOR);
+				Turn(110);
+			}
 		}			
-		
   }
 }
