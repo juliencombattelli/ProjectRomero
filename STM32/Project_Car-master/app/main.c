@@ -41,6 +41,11 @@ char DirRx[1];
 unsigned int periodic_modulo = 0;                 /* Global used to determine the time to send periodic CAN frame */
 
 volatile uint32_t msTicks;                        /* counts 1ms timeTicks     */
+
+//Current distance detected for each ultrasound sensor
+float SR, SL, FSR, FR, FL, FSL; 	
+//Previous distance detected for each ultrasound sensor																			
+float Prev_SR, Prev_SL, Prev_FSR, Prev_FR, Prev_FL, Prev_FSL; 
 /*----------------------------------------------------------------------------
   SysTick_Handler
  *----------------------------------------------------------------------------*/
@@ -83,14 +88,12 @@ void can_Init (void) {
 	VAL_ULTRA.ultrasound.bytes_ultrasound[4] = '4'; 
 	VAL_ULTRA.ultrasound.bytes_ultrasound[5] = '5'; 
 
-
-
 }
 
  
 void canPeriodic (void) {
 	int i;
-	uint8_t angle_direction ; 
+	uint8_t angle_direction, car_dist ; 
 	uint8_t speed = (uint8_t)((SpeedSensor_get(SPEED_CM_S,SENSOR_L)+SpeedSensor_get(SPEED_CM_S,SENSOR_R))/2.0) ;
 	
 	
@@ -98,6 +101,36 @@ void canPeriodic (void) {
 	/*------------------------------------------
 	 * Send an ultrasound frame every 200ms
 	 *-----------------------------------------*/
+	//Take the obstacle distance for each sensor
+	FSL = US_CalcDistance(0);
+	FL  = US_CalcDistance(1);
+	FSR = US_CalcDistance(2);
+	SL  = US_CalcDistance(3);
+	FR  = US_CalcDistance(4);
+	SR  = US_CalcDistance(5);
+	
+	car_dist = speed/5; // Distance of the car in 200 ms 
+	
+	
+	
+	if (FSL < 200) {
+		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += 1; 
+		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += ((int)(FSL/2)) << 2;
+	}		
+	//Check if the obstacle is moving
+	if (Prev_FSL-FSL > car_dist){
+		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += 2; 
+	}
+	
+	
+	Prev_FSL = FSL;
+	Prev_FL  = FL;
+	Prev_FSR = FSR;
+	Prev_SL  = SL;
+	Prev_FR  = FR;
+	Prev_SR  = SR;
+	
+	
 	CAN_TxMsg.id = CAN_ID_ULTRASOUND;                /* initialize msg to send   */  
   for (i = 0; i < 8; i++) CAN_TxMsg.data[i] = 0;
   CAN_TxMsg.len = 8;
@@ -206,14 +239,9 @@ void Dir_Cmd(char *cmd){
   MAIN function
  *----------------------------------------------------------------------------*/
 uint8_t angle;
-float SR, SL, FSR, FR, FL, FSL;
+
 		
 int main (void)  {
-  
-	
-	Timer_1234_Init (TIM2, 200000);								/* set Timer 2 every second */
-	Timer_Active_IT(TIM2, 0, canPeriodic);					/* Active Timer2 IT					*/
-
   SysTick_Config(SystemCoreClock / 1000);         /* SysTick 1 msec IRQ       */
 
 	Manager_Init();
@@ -222,7 +250,17 @@ int main (void)  {
 	Motor_Enable(REAR_MOTOR_L);
 	Motor_Enable(REAR_MOTOR_R);	
   can_Init ();                                    /* initialize CAN interface */
-  
+	
+	FSL = US_CalcDistance(0);
+	FL  = US_CalcDistance(1);
+	FSR = US_CalcDistance(2);
+	SL  = US_CalcDistance(3);
+	FR  = US_CalcDistance(4);
+	SR  = US_CalcDistance(5);
+	
+  Timer_1234_Init (TIM2, 200000);								  /* set Timer 2 every second */
+	Timer_Active_IT(TIM2, 0, canPeriodic);					/* Active Timer2 IT					*/
+	
   while (1) {
 		angle = Direction_get() ;	
 		
