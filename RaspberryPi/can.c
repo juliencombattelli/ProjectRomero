@@ -176,7 +176,8 @@ void * ReceiveData()
              printf("id : %d\n",frame.can_id) ;
              printf("dlc : %d\n",frame.can_dlc) ;
             
-             data_ultrasound data_us = frame.data ;
+             data_ultrasound data_us ;
+             memcpy(data_us.ultrasound,frame.data,sizeof(frame.data)) ;
              printf("data0 : %d\n",data_us.ultrasound.num_ultrasound[0]) ;
              printf("data1 : %d\n",data_us.ultrasound.num_ultrasound[1]) ;
              printf("data2 : %d\n",data_us.ultrasound.num_ultrasound[2]) ;
@@ -184,25 +185,37 @@ void * ReceiveData()
              printf("data4 : %d\n",data_us.ultrasound.num_ultrasound[4]) ;
              printf("data5 : %d\n",data_us.ultrasound.num_ultrasound[5]) ;
          }
-         if (frame.can_id == 0x007) {
+         if (frame.can_id == 0x005) {
              printf("Reception speed data \n") ;
              printf("%d bytes \n",nbytes) ;
              printf("id : %d\n",frame.can_id) ;
              printf("dlc : %d\n",frame.can_dlc) ;
              
-             data_odometer data_speed = frame.data ;
-             printf("data0 : %x\n",frame.data[0]) ;
-             printf("data1 : %x\n",frame.data[1]) ;
+             data_odometer data_speed ;
+             memcpy(data_speed.odometer,frame.data,sizeof(frame.data)) ;
+             printf("speed_data : %d\n",data_speed.odometer.num_odometer) ;
              
          }
-         if (frame.can_id == 0x006) {
+         if (frame.can_id == 0x004) {
              printf("Reception direction data \n") ;
              printf("%d bytes \n",nbytes) ;
              printf("id : %d\n",frame.can_id) ;
              printf("dlc : %d\n",frame.can_dlc) ;
-             printf("data0 : %x\n",frame.data[0]) ;
-             printf("data1 : %x\n",frame.data[1]) ;
+             
+             data_potentiometer data_direction;
+             memcpy(data_direction.potentiometer,frame.data,sizeof(frame.data)) ;
+             printf("data_direction : %d\n",data_direction.potentiometer.num_potentiometer) ;
          }
+        if (frame.can_id == 0x006) {
+            printf("Reception battery data \n") ;
+            printf("%d bytes \n",nbytes) ;
+            printf("id : %d\n",frame.can_id) ;
+            printf("dlc : %d\n",frame.can_dlc) ;
+            
+            data_battery data_batt ;
+            memcpy(data_batt.battery,frame.data,sizeof(frame)) ;
+            printf("data0 : %x\n",data_batt.battery.num_battery) ;
+        }
     }
 }
 

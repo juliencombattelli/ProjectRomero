@@ -74,7 +74,6 @@ typedef struct data_direction_command
 
 
 //speed and direction command must be define
-void create_ultrasound_frame(data_ultrasound data, char * trame) ;
 void create_speed_command_frame(data_speed_command data, char * trame);
 void create_direction_command_frame(data_direction_command data, char * trame);
 
