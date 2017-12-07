@@ -79,6 +79,7 @@ typedef struct data_direction_command
 void create_ultrasound_frame(data_ultrasound data, char * trame) ;
 void create_potentiometer_frame(data_potentiometer data, char * trame) ; 
 void create_odometer_frame(data_odometer data, char * trame) ;  
+void create_battery_frame(data_battery data, char * trame) ; 
 
 #endif
 

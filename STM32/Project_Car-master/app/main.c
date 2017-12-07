@@ -26,21 +26,28 @@
  data_ultrasound VAL_ULTRA ; 
  data_odometer VAL_ODOMETER ;
  data_potentiometer VAL_POTEN ;
+ data_battery VAL_BAT ;
 
 /*-------------------------------------------
 ---------------------------------------------
 --------------------------------------------*/
 
 char text[17];
-uint8_t battery_level ; 
 
-unsigned int val_Tx = 0, val_Rx = 0;              /* Globals used for display */
+unsigned int val_Tx = 0, val_Rx = 0;  /* Globals used for display */
 char trame[8];
 char SpeedRx[1];
 char DirRx[1];
-unsigned int periodic_modulo = 0;                 /* Global used to determine the time to send periodic CAN frame */
+unsigned int periodic_modulo = 0;     /* Global used to determine the time to send periodic CAN frame */
+unsigned int cnt_failure = 0;         /* Global used to detect a CAN failure */
+unsigned int nb_rcv = 0;							/* Global used to count the number of commands received */
 
-volatile uint32_t msTicks;                        /* counts 1ms timeTicks     */
+volatile uint32_t msTicks;            /* Counts 1ms timeTicks     */
+
+//Current distance detected for each ultrasound sensor
+float SR, SL, FSR, FR, FL, FSL; 	
+//Previous distance detected for each ultrasound sensor																			
+float Prev_SR, Prev_SL, Prev_FSR, Prev_FR, Prev_FL, Prev_FSL; 
 /*----------------------------------------------------------------------------
   SysTick_Handler
  *----------------------------------------------------------------------------*/
@@ -64,12 +71,9 @@ void Delay (uint32_t dlyTicks) {
  *----------------------------------------------------------------------------*/
 void can_Init (void) {
 
-  CAN_setup ();                                   /* setup CAN Controller     */
-  CAN_wrFilter (CAN_ID_RMT_ULTRASOUND, STANDARD_FORMAT);             /* Enable reception of msgs */
+  CAN_setup ();                                   /* setup CAN Controller     */  
 	CAN_wrFilter (CAN_ID_CMD_DIR, STANDARD_FORMAT);             /* Enable reception of msgs */
 	CAN_wrFilter (CAN_ID_CMD_SPEED, STANDARD_FORMAT);             /* Enable reception of msgs */
-	CAN_wrFilter (CAN_ID_RMT_DIR, STANDARD_FORMAT);             /* Enable reception of msgs */
-	CAN_wrFilter (CAN_ID_RMT_SPEED, STANDARD_FORMAT);             /* Enable reception of msgs */
 	
   CAN_start ();                                   /* start CAN Controller   */
 	CAN_TxMsg.id = CAN_ID_ULTRASOUND;
@@ -83,21 +87,80 @@ void can_Init (void) {
 	VAL_ULTRA.ultrasound.bytes_ultrasound[4] = '4'; 
 	VAL_ULTRA.ultrasound.bytes_ultrasound[5] = '5'; 
 
-
-
 }
 
  
 void canPeriodic (void) {
 	int i;
-	uint8_t angle_direction ; 
+	uint8_t angle_direction, car_dist ; 
 	uint8_t speed = (uint8_t)((SpeedSensor_get(SPEED_CM_S,SENSOR_L)+SpeedSensor_get(SPEED_CM_S,SENSOR_R))/2.0) ;
-	
-	
-	
+		
 	/*------------------------------------------
 	 * Send an ultrasound frame every 200ms
 	 *-----------------------------------------*/
+	//Take the obstacle distance for each sensor
+	FSL = US_CalcDistance(0);
+	FL  = US_CalcDistance(1);
+	FSR = US_CalcDistance(2);
+	SL  = US_CalcDistance(3);
+	FR  = US_CalcDistance(4);
+	SR  = US_CalcDistance(5);
+	
+	car_dist = speed/5; // Distance of the car in 200 ms 
+		
+	//Detect an obstacle at less than 2 meters and get the obstacle distance
+	if (SL < 200) {
+		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += 1; 
+		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += ((int)(SL/2)) << 2;
+	}		
+	if (FSL < 200) {
+		VAL_ULTRA.ultrasound.bytes_ultrasound[1] += 1; 
+		VAL_ULTRA.ultrasound.bytes_ultrasound[1] += ((int)(FSL/2)) << 2;
+	}		
+	if (FL < 200) {
+		VAL_ULTRA.ultrasound.bytes_ultrasound[2] += 1; 
+		VAL_ULTRA.ultrasound.bytes_ultrasound[2] += ((int)(FL/2)) << 2;
+	}		
+	if (FR < 200) {
+		VAL_ULTRA.ultrasound.bytes_ultrasound[3] += 1; 
+		VAL_ULTRA.ultrasound.bytes_ultrasound[3] += ((int)(FR/2)) << 2;
+	}		
+	if (FSR < 200) {
+		VAL_ULTRA.ultrasound.bytes_ultrasound[4] += 1; 
+		VAL_ULTRA.ultrasound.bytes_ultrasound[4] += ((int)(FSR/2)) << 2;
+	}		
+	if (SR < 200) {
+		VAL_ULTRA.ultrasound.bytes_ultrasound[5] += 1; 
+		VAL_ULTRA.ultrasound.bytes_ultrasound[5] += ((int)(SR/2)) << 2;
+	}		
+	//Check if the obstacle is moving
+	if (Prev_SL-SL > car_dist){
+		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += 2; 
+	}
+	if (Prev_FSL-FSL > car_dist){
+		VAL_ULTRA.ultrasound.bytes_ultrasound[1] += 2; 
+	}
+	if (Prev_FL-FL > car_dist){
+		VAL_ULTRA.ultrasound.bytes_ultrasound[2] += 2; 
+	}
+	if (Prev_FR-FR > car_dist){
+		VAL_ULTRA.ultrasound.bytes_ultrasound[3] += 2; 
+	}
+	if (Prev_FSR-FSR > car_dist){
+		VAL_ULTRA.ultrasound.bytes_ultrasound[4] += 2; 
+	}
+	if (Prev_SR-SR > car_dist){
+		VAL_ULTRA.ultrasound.bytes_ultrasound[5] += 2; 
+	}
+		
+	
+	Prev_FSL = FSL;
+	Prev_FL  = FL;
+	Prev_FSR = FSR;
+	Prev_SL  = SL;
+	Prev_FR  = FR;
+	Prev_SR  = SR;	
+	
 	CAN_TxMsg.id = CAN_ID_ULTRASOUND;                /* initialize msg to send   */  
   for (i = 0; i < 8; i++) CAN_TxMsg.data[i] = 0;
   CAN_TxMsg.len = 8;
@@ -105,7 +168,6 @@ void canPeriodic (void) {
   CAN_TxMsg.type = DATA_FRAME;	
 	
 	create_ultrasound_frame(VAL_ULTRA, trame);
-	//val_Tx++; //Value of the ultrasound sensorstrame
 	CAN_waitReady ();
  	CAN_TxRdy0 = 0;    													/* CAN HW unready to transmit message mailbox 0*/	
 	memcpy(CAN_TxMsg.data, trame, sizeof(trame));
@@ -165,10 +227,36 @@ void canPeriodic (void) {
 	 *-----------------------------------------*/
 		case 2:
 			//TODO: CAN part 
-			battery_level = Battery_get() ; 
+			CAN_TxMsg.id = CAN_ID_BATTERY ; 						/* initialize message to send   */
+			for (i = 0; i < 8; i++) CAN_TxMsg.data[i] = 0;
+			CAN_TxMsg.len = 8;
+			CAN_TxMsg.format = STANDARD_FORMAT;
+			CAN_TxMsg.type = DATA_FRAME;				
+		
+			VAL_BAT.battery.num_battery = Battery_get() ; 
+			create_battery_frame(VAL_BAT,trame) ; 
+			CAN_waitReady() ; 
+			CAN_TxRdy2 = 0;    													/* CAN HW unready to transmit message mailbox 2*/
+			
+			memcpy(CAN_TxMsg.data, trame, sizeof(trame));
+			CAN_wrMsg (&CAN_TxMsg);
+		
 			periodic_modulo = 0;
 			break;
 	}		
+	
+	
+	// stop the car if no command messages received during the last second
+	if (cnt_failure == 4) {		
+		if (nb_rcv == 0){
+			SpeedRx[0] = 0;
+			DirRx[0] = 0;
+		}	
+		cnt_failure = 0;
+	}
+	else if (cnt_failure < 4) {
+		cnt_failure ++;
+	}
 }
 
 
@@ -206,14 +294,9 @@ void Dir_Cmd(char *cmd){
   MAIN function
  *----------------------------------------------------------------------------*/
 uint8_t angle;
-float SR, SL, FSR, FR, FL, FSL;
+
 		
 int main (void)  {
-  
-	
-	Timer_1234_Init (TIM2, 200000);								/* set Timer 2 every second */
-	Timer_Active_IT(TIM2, 0, canPeriodic);					/* Active Timer2 IT					*/
-
   SysTick_Config(SystemCoreClock / 1000);         /* SysTick 1 msec IRQ       */
 
 	Manager_Init();
@@ -222,7 +305,17 @@ int main (void)  {
 	Motor_Enable(REAR_MOTOR_L);
 	Motor_Enable(REAR_MOTOR_R);	
   can_Init ();                                    /* initialize CAN interface */
-  
+	
+	FSL = US_CalcDistance(0);
+	FL  = US_CalcDistance(1);
+	FSR = US_CalcDistance(2);
+	SL  = US_CalcDistance(3);
+	FR  = US_CalcDistance(4);
+	SR  = US_CalcDistance(5);
+	
+  Timer_1234_Init (TIM2, 200000);								  /* set Timer 2 every second */
+	Timer_Active_IT(TIM2, 0, canPeriodic);					/* Active Timer2 IT					*/
+	
   while (1) {
 		angle = Direction_get() ;	
 		
@@ -231,11 +324,10 @@ int main (void)  {
 		FSR  = US_CalcDistance(2);
 		SL = US_CalcDistance(3);
 		FR  = US_CalcDistance(4);
-		SR = US_CalcDistance(5);
+		SR = US_CalcDistance(5);	
 		
-		SpeedRx[0] = 2;
-		
-		if (CAN_RxRdy) {                              //rx msg on CAN Ctrl         		
+		if (CAN_RxRdy) {                              //rx msg on CAN Ctrl 
+			nb_rcv ++;
 			CAN_RxRdy = 0;
 			if (CAN_RxMsg.id == CAN_ID_CMD_SPEED){
 				memcpy(SpeedRx, CAN_RxMsg.data, sizeof(SpeedRx));}				
@@ -276,8 +368,5 @@ int main (void)  {
 			Turn(110);
 		}			
 		
-		
-		
-
   }
 }
