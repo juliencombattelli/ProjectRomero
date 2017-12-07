@@ -76,9 +76,7 @@ typedef struct data_direction_command
 	
 } data_direction_command ; 
 
-
-//ultrasound data type must be define 
-void create_ultrasound_frame(data_ultrasound data, char * trame) ; 
+void create_ultrasound_frame(data_ultrasound data, char * trame) ;
 void create_potentiometer_frame(data_potentiometer data, char * trame) ; 
 void create_odometer_frame(data_odometer data, char * trame) ;  
 
