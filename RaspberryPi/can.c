@@ -177,7 +177,7 @@ void * ReceiveData()
              printf("dlc : %d\n",frame.can_dlc) ;
             
              data_ultrasound data_us ;
-             memcpy(data_us.ultrasound,frame.data,sizeof(frame.data)) ;
+             memcpy(data_us.ultrasound.num_ultrasound,frame.data,sizeof(frame.data)) ;
              printf("data0 : %d\n",data_us.ultrasound.num_ultrasound[0]) ;
              printf("data1 : %d\n",data_us.ultrasound.num_ultrasound[1]) ;
              printf("data2 : %d\n",data_us.ultrasound.num_ultrasound[2]) ;
@@ -192,7 +192,7 @@ void * ReceiveData()
              printf("dlc : %d\n",frame.can_dlc) ;
              
              data_odometer data_speed ;
-             memcpy(data_speed.odometer,frame.data,sizeof(frame.data)) ;
+             data_speed.odometer.num_odometer=frame.data[0] ;
              printf("speed_data : %d\n",data_speed.odometer.num_odometer) ;
              
          }
@@ -203,7 +203,7 @@ void * ReceiveData()
              printf("dlc : %d\n",frame.can_dlc) ;
              
              data_potentiometer data_direction;
-             memcpy(data_direction.potentiometer,frame.data,sizeof(frame.data)) ;
+             data_direction.potentiometer.num_potentiometer = frame.data[0] ;
              printf("data_direction : %d\n",data_direction.potentiometer.num_potentiometer) ;
          }
         if (frame.can_id == 0x006) {
@@ -213,29 +213,29 @@ void * ReceiveData()
             printf("dlc : %d\n",frame.can_dlc) ;
             
             data_battery data_batt ;
-            memcpy(data_batt.battery,frame.data,sizeof(frame)) ;
-            printf("data0 : %x\n",data_batt.battery.num_battery) ;
+            data_batt.battery.num_battery=frame.data[0] ;
+            printf("data0 : %d\n",data_batt.battery.num_battery) ;
         }
     }
 }
 
-/*
+
  int main(void)
  {
- pthread_t threadReceive ;
- i=0 ;
- //create and launch a thread to receive data
- if(pthread_create(&threadReceive,NULL,ReceiveData,NULL)==1) {
- fprintf (stderr, "%s", strerror (1));
+	 pthread_t threadReceive ;
+ 	int i=0 ;
+ 	//create and launch a thread to receive data
+ 	if(pthread_create(&threadReceive,NULL,ReceiveData,NULL)==1) {
+ 		fprintf (stderr, "%s", strerror (1));
+ 	}
+	 //init send configuration
+	 socket_send = initSend();
+	 //init the function called by the signal SIGALRM
+	// signal(SIGALRM,SendData_Speed);
+	 //generate a signal SIGALRM each 25ms
+	// ualarm(25000,25000) ;
+	 //wait the end of the thread created (impossible due to the while 1)
+	 pthread_join(threadReceive,NULL) ;
+	 return 0;
  }
- //init send configuration
- socket_send = initSend();
- //init the function called by the signal SIGALRM
- signal(SIGALRM,SendData);
- //generate a signal SIGALRM each 25ms
- ualarm(25000,25000) ;
- //wait the end of the thread created (impossible due to the while 1)
- pthread_join(threadReceive,NULL) ;
- return 0;
- }
- */
+ 
