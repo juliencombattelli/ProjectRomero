@@ -235,9 +235,9 @@ void canPeriodic (void) {
 			break;
 	}		
 	
-
-	if (cnt_failure == 4) {
-		// stop the car if no command messages received during the last second
+	
+	// stop the car if no command messages received during the last second
+	if (cnt_failure == 4) {		
 		if (nb_rcv == 0){
 			SpeedRx[0] = 0;
 			DirRx[0] = 0;
