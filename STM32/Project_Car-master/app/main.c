@@ -112,14 +112,49 @@ void canPeriodic (void) {
 	car_dist = speed/5; // Distance of the car in 200 ms 
 	
 	
-	
-	if (FSL < 200) {
+	//Detect an obstacle at less than 2 meters and get the obstacle distance
+	if (SL < 200) {
 		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += 1; 
-		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += ((int)(FSL/2)) << 2;
+		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += ((int)(SL/2)) << 2;
+	}		
+	if (FSL < 200) {
+		VAL_ULTRA.ultrasound.bytes_ultrasound[1] += 1; 
+		VAL_ULTRA.ultrasound.bytes_ultrasound[1] += ((int)(FSL/2)) << 2;
+	}		
+	if (FL < 200) {
+		VAL_ULTRA.ultrasound.bytes_ultrasound[2] += 1; 
+		VAL_ULTRA.ultrasound.bytes_ultrasound[2] += ((int)(FL/2)) << 2;
+	}		
+	if (FR < 200) {
+		VAL_ULTRA.ultrasound.bytes_ultrasound[3] += 1; 
+		VAL_ULTRA.ultrasound.bytes_ultrasound[3] += ((int)(FR/2)) << 2;
+	}		
+	if (FSR < 200) {
+		VAL_ULTRA.ultrasound.bytes_ultrasound[4] += 1; 
+		VAL_ULTRA.ultrasound.bytes_ultrasound[4] += ((int)(FSR/2)) << 2;
+	}		
+	if (SR < 200) {
+		VAL_ULTRA.ultrasound.bytes_ultrasound[5] += 1; 
+		VAL_ULTRA.ultrasound.bytes_ultrasound[5] += ((int)(SR/2)) << 2;
 	}		
 	//Check if the obstacle is moving
-	if (Prev_FSL-FSL > car_dist){
+	if (Prev_SL-SL > car_dist){
 		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += 2; 
+	}
+	if (Prev_FSL-FSL > car_dist){
+		VAL_ULTRA.ultrasound.bytes_ultrasound[1] += 2; 
+	}
+	if (Prev_FL-FL > car_dist){
+		VAL_ULTRA.ultrasound.bytes_ultrasound[2] += 2; 
+	}
+	if (Prev_FR-FR > car_dist){
+		VAL_ULTRA.ultrasound.bytes_ultrasound[3] += 2; 
+	}
+	if (Prev_FSR-FSR > car_dist){
+		VAL_ULTRA.ultrasound.bytes_ultrasound[4] += 2; 
+	}
+	if (Prev_SR-SR > car_dist){
+		VAL_ULTRA.ultrasound.bytes_ultrasound[5] += 2; 
 	}
 	
 	
