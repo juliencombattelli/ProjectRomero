@@ -72,7 +72,7 @@ void Print_Obstacle_Detection(obstacle ** obst) {
             } else {
                 printf("Static\n") ;
             }
-            printf("Dist : %d cm\n") ;
+            printf("Dist : %d cm\n",obst[i]->dist) ;
             printf("||=============================||\n") ;
         }
     }
@@ -217,8 +217,8 @@ void * ReceiveData()
              for(it=0 ; it<6 ; it++) {
                  obst[it]=malloc(sizeof(obstacle));
              }
-             Obstacle_Detection(data_us,obst) ;
              memcpy(data_us.ultrasound.num_ultrasound,frame.data,sizeof(frame.data)) ;
+             Obstacle_Detection(data_us,obst) ;
             
              //function to delete after debug
              Print_Obstacle_Detection(obst) ;
@@ -269,8 +269,8 @@ void Obstacle_Detection(data_ultrasound data, obstacle ** obst) {
     int i ;
     for(i=0 ; i<6 ; i++) {
         obst[i]->detected= (data.ultrasound.num_ultrasound[i])&0x01 ;
-        obst[i]->mobile= (data.ultrasound.num_ultrasound[i])&0x02 ;
-        obst[i]->detected= ((data.ultrasound.num_ultrasound[i])&0xFC)*2 ;
+        obst[i]->mobile= ((data.ultrasound.num_ultrasound[i])&0x02)>>1 ;
+        obst[i]->dist= ((data.ultrasound.num_ultrasound[i])&0xFC)>>1 ;
     }
 }
 
