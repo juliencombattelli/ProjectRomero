@@ -42,6 +42,41 @@ void create_direction_command_frame(data_direction_command data, char * frame)
     frame[1] = data.direction_command.bytes_direction_command[1];
 }
 
+void Print_Obstacle_Detection(obstacle ** obst) {
+    int i ;
+    for(i=0 ; i<6 ; i++) {
+        if(obst[i]->detected) {
+            printf("||=============================||\n") ;
+            switch(i) {
+                case 0:
+                    printf("OBASTACLE DETECTED ON || SIDE LEFT || (SL)\n") ;
+                    break ;
+                case 1:
+                    printf("OBASTACLE DETECTED ON || FRONT SIDE LEFT || (FSL)\n") ;
+                    break ;
+                case 2:
+                    printf("OBASTACLE DETECTED ON || FRONT LEFT || (FL)\n") ;
+                    break ;
+                case 3:
+                    printf("OBASTACLE DETECTED ON || FRONT RIGHT || (FR)\n") ;
+                    break ;
+                case 4:
+                    printf("OBASTACLE DETECTED ON || FRONT SIDE RIGHT || (FSR)\n") ;
+                    break ;
+                default:
+                    printf("OBASTACLE DETECTED ON || SIDE RIGHT || (SR)\n") ;
+                    break ;
+            }
+            if(obst[i]->mobile) {
+                printf("Mobile\n") ;
+            } else {
+                printf("Static\n") ;
+            }
+            printf("Dist : %d cm\n") ;
+            printf("||=============================||\n") ;
+        }
+    }
+}
 
 //init the send
 int initSend()
@@ -177,13 +212,18 @@ void * ReceiveData()
              printf("dlc : %d\n",frame.can_dlc) ;
             
              data_ultrasound data_us ;
+             obstacle * obst[6] ;
+             int it ;
+             for(it=0 ; it<6 ; it++) {
+                 obst[it]=malloc(sizeof(obstacle));
+             }
+             Obstacle_Detection(data_us,obst) ;
              memcpy(data_us.ultrasound.num_ultrasound,frame.data,sizeof(frame.data)) ;
-             printf("data0 : %d\n",data_us.ultrasound.num_ultrasound[0]) ;
-             printf("data1 : %d\n",data_us.ultrasound.num_ultrasound[1]) ;
-             printf("data2 : %d\n",data_us.ultrasound.num_ultrasound[2]) ;
-             printf("data3 : %d\n",data_us.ultrasound.num_ultrasound[3]) ;
-             printf("data4 : %d\n",data_us.ultrasound.num_ultrasound[4]) ;
-             printf("data5 : %d\n",data_us.ultrasound.num_ultrasound[5]) ;
+            
+             //function to delete after debug
+             Print_Obstacle_Detection(obst) ;
+            
+            //TODO: SEND DATA TO APP
          }
          if (frame.can_id == 0x005) {
              printf("Reception speed data \n") ;
@@ -195,6 +235,8 @@ void * ReceiveData()
              data_speed.odometer.num_odometer=frame.data[0] ;
              printf("speed_data : %d\n",data_speed.odometer.num_odometer) ;
              
+             //TODO: SEND DATA TO APP
+             
          }
          if (frame.can_id == 0x004) {
              printf("Reception direction data \n") ;
@@ -205,6 +247,8 @@ void * ReceiveData()
              data_potentiometer data_direction;
              data_direction.potentiometer.num_potentiometer = frame.data[0] ;
              printf("data_direction : %d\n",data_direction.potentiometer.num_potentiometer) ;
+             
+             //TODO: SEND DATA TO APP
          }
         if (frame.can_id == 0x006) {
             printf("Reception battery data \n") ;
@@ -215,7 +259,18 @@ void * ReceiveData()
             data_battery data_batt ;
             data_batt.battery.num_battery=frame.data[0] ;
             printf("data0 : %d\n",data_batt.battery.num_battery) ;
+            
+            //TODO: SEND DATA TO APP
         }
+    }
+}
+
+void Obstacle_Detection(data_ultrasound data, obstacle ** obst) {
+    int i ;
+    for(i=0 ; i<6 ; i++) {
+        obst[i]->detected= (data.ultrasound.num_ultrasound[i])&0x01 ;
+        obst[i]->mobile= (data.ultrasound.num_ultrasound[i])&0x02 ;
+        obst[i]->detected= ((data.ultrasound.num_ultrasound[i])&0xFC)*2 ;
     }
 }
 

@@ -73,6 +73,14 @@ typedef struct data_direction_command
 } data_direction_command ;
 
 
+typedef struct obstacle
+{
+    int detected ;  //1 if obstacle detected else 0
+    int mobile ;    //1 if mobile ; 0 if static
+    int dist ;      //distance from the detected object
+} obstacle ;
+
+
 //speed and direction command must be define
 void create_speed_command_frame(data_speed_command data, char * trame);
 void create_direction_command_frame(data_direction_command data, char * trame);
@@ -96,5 +104,8 @@ void SendData_Direction(uint16_t direction);
 
 //receive and print data depending on the id of the frame
 void * ReceiveData();
+
+//analyse the obstacle detection
+void Obstacle_Detection(data_ultrasound data, obstacle ** obst) ;
 
 #endif /* CAN_H_ */
