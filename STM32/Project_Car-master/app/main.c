@@ -292,9 +292,10 @@ void Turn(uint8_t deg){
 	else if (deg < Direction_get() - 5){
 		FrontMotor_turn(RIGHT);}
 	else {
-		Motor_Disable(FRONT_MOTOR);}}
+		FrontMotor_turn(NONE);}}
+		//Motor_Disable(FRONT_MOTOR);
 
-		
+		 
 void Speed_Cmd(char *cmd){
 	if (cmd[0] == '0'){ 										//STOP
 		Motor_setSpeed(REAR_MOTOR_L, 0); 
@@ -395,15 +396,15 @@ int main (void)  {
 		if (DirRx[0] == '0') //Position centrale des roues 127
 		{
 			if (angle >= 127 || angle <= 137){
-				Motor_Enable(FRONT_MOTOR);
+				//Motor_Enable(FRONT_MOTOR);
 				Turn(132);
 			}
 			
-		}
+		}  
 		else if (DirRx[0] == '1') //Position à gauche des roues 155
 		{
 			if (angle >= 145 || angle <= 155){
-				Motor_Enable(FRONT_MOTOR);
+				//Motor_Enable(FRONT_MOTOR);
 				Turn(150);
 			}
 			
@@ -411,7 +412,7 @@ int main (void)  {
 		else if (DirRx[0] == '2') //Position à droite des roues 106
 		{
 			if (angle >= 105 || angle <= 115){
-				Motor_Enable(FRONT_MOTOR);
+				//Motor_Enable(FRONT_MOTOR);
 				Turn(110);
 			}
 		}			
