@@ -42,6 +42,41 @@ void create_direction_command_frame(data_direction_command data, char * frame)
     frame[1] = data.direction_command.bytes_direction_command[1];
 }
 
+void Print_Obstacle_Detection(obstacle ** obst) {
+    int i ;
+    for(i=0 ; i<6 ; i++) {
+        if(obst[i]->detected) {
+            printf("||=============================||\n") ;
+            switch(i) {
+                case 0:
+                    printf("OBASTACLE DETECTED ON || SIDE LEFT || (SL)\n") ;
+                    break ;
+                case 1:
+                    printf("OBASTACLE DETECTED ON || FRONT SIDE LEFT || (FSL)\n") ;
+                    break ;
+                case 2:
+                    printf("OBASTACLE DETECTED ON || FRONT LEFT || (FL)\n") ;
+                    break ;
+                case 3:
+                    printf("OBASTACLE DETECTED ON || FRONT RIGHT || (FR)\n") ;
+                    break ;
+                case 4:
+                    printf("OBASTACLE DETECTED ON || FRONT SIDE RIGHT || (FSR)\n") ;
+                    break ;
+                default:
+                    printf("OBASTACLE DETECTED ON || SIDE RIGHT || (SR)\n") ;
+                    break ;
+            }
+            if(obst[i]->mobile) {
+                printf("Mobile\n") ;
+            } else {
+                printf("Static\n") ;
+            }
+            printf("Dist : %d cm\n",obst[i]->dist) ;
+            printf("||=============================||\n") ;
+        }
+    }
+}
 
 //init the send
 int initSend()
@@ -170,59 +205,92 @@ void * ReceiveData()
             exit(1) ;
         }
         
-        /*if (frame.can_id == 0x001)
-         {
-         printf("Reception Data ultrasons \n") ;
-         printf("%d bytes \n",nbytes) ;
-         printf("id : %d\n",frame.can_id) ;
-         printf("dlc : %d\n",frame.can_dlc) ;
-         printf("data0 : %x\n",frame.data[0]) ;
-         printf("data1 : %x\n",frame.data[1]) ;
-         printf("data2 : %x\n",frame.data[2]) ;
-         printf("data3 : %x\n",frame.data[3]) ;
-         printf("data4 : %x\n",frame.data[4]) ;
-         printf("data5 : %x\n",frame.data[5]) ;
+        if (frame.can_id == 0x001) {
+             printf("Reception Data ultrasons \n") ;
+             printf("%d bytes \n",nbytes) ;
+             printf("id : %d\n",frame.can_id) ;
+             printf("dlc : %d\n",frame.can_dlc) ;
+            
+             data_ultrasound data_us ;
+             obstacle * obst[6] ;
+             int it ;
+             for(it=0 ; it<6 ; it++) {
+                 obst[it]=malloc(sizeof(obstacle));
+             }
+             memcpy(data_us.ultrasound.num_ultrasound,frame.data,sizeof(frame.data)) ;
+             Obstacle_Detection(data_us,obst) ;
+            
+             //function to delete after debug
+             Print_Obstacle_Detection(obst) ;
+            
+            //TODO: SEND DATA TO APP
          }
-         if (frame.can_id == 0x007)
-         {
-         printf("Reception Data potentiometre \n") ;
-         printf("%d bytes \n",nbytes) ;
-         printf("id : %d\n",frame.can_id) ;
-         printf("dlc : %d\n",frame.can_dlc) ;
-         printf("data0 : %x\n",frame.data[0]) ;
-         printf("data1 : %x\n",frame.data[1]) ;
+         if (frame.can_id == 0x005) {
+             printf("Reception speed data \n") ;
+             printf("%d bytes \n",nbytes) ;
+             printf("id : %d\n",frame.can_id) ;
+             printf("dlc : %d\n",frame.can_dlc) ;
+             
+             data_odometer data_speed ;
+             data_speed.odometer.num_odometer=frame.data[0] ;
+             printf("speed_data : %d\n",data_speed.odometer.num_odometer) ;
+             
+             //TODO: SEND DATA TO APP
+             
          }
-         if (frame.can_id == 0x006)
-         {
-         printf("Reception Data capteurs effet hall \n") ;
-         printf("%d bytes \n",nbytes) ;
-         printf("id : %d\n",frame.can_id) ;
-         printf("dlc : %d\n",frame.can_dlc) ;
-         printf("data0 : %x\n",frame.data[0]) ; //left odometer
-         printf("data1 : %x\n",frame.data[1]) ; //left odometer
-         printf("data2 : %x\n",frame.data[2]) ; //right odometer
-         printf("data3 : %x\n",frame.data[3]) ; //right odometer
-         }*/
+         if (frame.can_id == 0x004) {
+             printf("Reception direction data \n") ;
+             printf("%d bytes \n",nbytes) ;
+             printf("id : %d\n",frame.can_id) ;
+             printf("dlc : %d\n",frame.can_dlc) ;
+             
+             data_potentiometer data_direction;
+             data_direction.potentiometer.num_potentiometer = frame.data[0] ;
+             printf("data_direction : %d\n",data_direction.potentiometer.num_potentiometer) ;
+             
+             //TODO: SEND DATA TO APP
+         }
+        if (frame.can_id == 0x006) {
+            printf("Reception battery data \n") ;
+            printf("%d bytes \n",nbytes) ;
+            printf("id : %d\n",frame.can_id) ;
+            printf("dlc : %d\n",frame.can_dlc) ;
+            
+            data_battery data_batt ;
+            data_batt.battery.num_battery=frame.data[0] ;
+            printf("data0 : %d\n",data_batt.battery.num_battery) ;
+            
+            //TODO: SEND DATA TO APP
+        }
     }
 }
 
-/*
+void Obstacle_Detection(data_ultrasound data, obstacle ** obst) {
+    int i ;
+    for(i=0 ; i<6 ; i++) {
+        obst[i]->detected= (data.ultrasound.num_ultrasound[i])&0x01 ;
+        obst[i]->mobile= ((data.ultrasound.num_ultrasound[i])&0x02)>>1 ;
+        obst[i]->dist= ((data.ultrasound.num_ultrasound[i])&0xFC)>>1 ;
+    }
+}
+
+
  int main(void)
  {
- pthread_t threadReceive ;
- i=0 ;
- //create and launch a thread to receive data
- if(pthread_create(&threadReceive,NULL,ReceiveData,NULL)==1) {
- fprintf (stderr, "%s", strerror (1));
+	 pthread_t threadReceive ;
+ 	int i=0 ;
+ 	//create and launch a thread to receive data
+ 	if(pthread_create(&threadReceive,NULL,ReceiveData,NULL)==1) {
+ 		fprintf (stderr, "%s", strerror (1));
+ 	}
+	 //init send configuration
+	 socket_send = initSend();
+	 //init the function called by the signal SIGALRM
+	// signal(SIGALRM,SendData_Speed);
+	 //generate a signal SIGALRM each 25ms
+	// ualarm(25000,25000) ;
+	 //wait the end of the thread created (impossible due to the while 1)
+	 pthread_join(threadReceive,NULL) ;
+	 return 0;
  }
- //init send configuration
- socket_send = initSend();
- //init the function called by the signal SIGALRM
- signal(SIGALRM,SendData);
- //generate a signal SIGALRM each 25ms
- ualarm(25000,25000) ;
- //wait the end of the thread created (impossible due to the while 1)
- pthread_join(threadReceive,NULL) ;
- return 0;
- }
- */
+ 
