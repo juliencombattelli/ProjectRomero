@@ -33,7 +33,7 @@ public:
 		: uint16_t
 		{
 			BleUuid_AcmService = 0x7db9, BleUuid_AcmCharState = 0xd288,	// Write without resp
-		BleUuid_AcmCharFeedb = 0xc1cb,	// Read and Notify
+		BleUuid_AcmCharFeedb = 0xc15b,	// Read and Notify
 		BleUuid_AcmCharAlert = 0xdcb1 	// Read and Notify
 	};
 

@@ -66,6 +66,44 @@ void Gateway::Ble_advertise()
 	hci_close_dev(hci0_dd);
 }
 
+struct gatt_db_attribute * feedb = nullptr;
+uint16_t handle;
+
+void gatt_svc_chngd_ccc_read_cb(struct gatt_db_attribute *attrib,
+					unsigned int id, uint16_t offset,
+					uint8_t opcode, struct bt_att *att,
+					void *user_data)
+{
+
+}
+
+
+void gap_device_name_write_cb(gatt_db_attribute *attrib, unsigned int id, uint16_t offset, const uint8_t *value, size_t len, uint8_t opcode, bt_att *att, void *user_data)
+{
+	GattServer* self = static_cast<decltype(self)>(user_data);
+	uint8_t error = 0;
+
+	PRLOG("Direction Write called\n");
+
+	if (!(offset + len))
+	{
+		self->m_device_name.clear();
+		goto done;
+	}
+
+	if (offset > self->m_device_name.size())
+	{
+		error = BT_ATT_ERROR_INVALID_OFFSET;
+		goto done;
+	}
+
+	if (value)
+		self->m_device_name += std::string(reinterpret_cast<const char*>(value), len);
+
+done:
+	gatt_db_attribute_write_result(attrib, id, error);
+}
+
 int Gateway::run()
 {
 	/*
@@ -98,13 +136,15 @@ int Gateway::run()
 	BT_ATT_PERM_WRITE, BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP,
 	NULL, Ble_onDataReceived, this);
 
-	m_gattServer.add_characteristic(acm_service, BleUuid_AcmCharFeedb,
+	feedb = m_gattServer.add_characteristic(acm_service, BleUuid_AcmCharFeedb,
 	BT_ATT_PERM_READ, BT_GATT_CHRC_PROP_READ | BT_GATT_CHRC_PROP_NOTIFY,
 	NULL, NULL, &m_gattServer);
 
-	m_gattServer.add_characteristic(acm_service, BleUuid_AcmCharAlert,
-	BT_ATT_PERM_READ, BT_GATT_CHRC_PROP_READ | BT_GATT_CHRC_PROP_NOTIFY,
-	NULL, NULL, &m_gattServer);
+	handle = gatt_db_attribute_get_handle(feedb);
+
+	bt_uuid_t uuid;
+	bt_uuid16_create(&uuid, GATT_CLIENT_CHARAC_CFG_UUID);
+	gatt_db_service_add_descriptor(acm_service, &uuid, BT_ATT_PERM_READ, gatt_svc_chngd_ccc_read_cb, nullptr, this);
 
 	m_gattServer.set_service_active(acm_service, true);
 
@@ -161,7 +201,7 @@ void Gateway::Can_onTimeToSend(void* user_data)
 		int dir = self->m_carParam.dir;
 		self->m_carParam.mutex.unlock();
 
-		uint16_t direction = '0';
+		/*uint16_t direction = '0';
 		switch (dir)
 		{
 		case 0:
@@ -174,10 +214,10 @@ void Gateway::Can_onTimeToSend(void* user_data)
 			break;
 		default:
 			direction = '0';
-		}
+		}*/
 
 		self->m_canController.sendMessage(CanId_DirectionCmd,
-				(uint8_t*) &direction);
+				(uint8_t*) &dir);
 		i = 1;
 	}
 	else if (i == 1)
@@ -187,14 +227,14 @@ void Gateway::Can_onTimeToSend(void* user_data)
 		int is_turbo = self->m_carParam.turbo;
 		self->m_carParam.mutex.unlock();
 
-		uint16_t speed = '0';
+		uint16_t speed = 0;
 
 		if (is_moving)
 		{
 			if (is_turbo)
-				speed = '2';
+				speed = 2;
 			else
-				speed = '1';
+				speed = 1;
 		}
 
 		self->m_canController.sendMessage(CanId_SpeedCmd, (uint8_t*) &speed);
@@ -203,8 +243,33 @@ void Gateway::Can_onTimeToSend(void* user_data)
 	}
 }
 
+void confirm_write(gatt_db_attribute *attr, int err, void *user_data)
+{
+	if (!err)
+		return;
+
+	fprintf(stderr, "Error caching attribute %p - err: %d\n", attr, err);
+	exit(1);
+}
+
+struct FeedbData
+{
+	uint8_t obst;
+	uint8_t speed;
+	uint8_t dir;
+	uint8_t bat;
+};
+
 void Gateway::Can_onDataReceived(int fd, uint32_t events, void *user_data)
 {
+	static FeedbData feedbData =
+	{
+			0,
+			0,
+			0,
+			0
+	};
+
 	Gateway* self = (decltype(self)) user_data;
 
 	int nbytes;
@@ -232,56 +297,63 @@ void Gateway::Can_onDataReceived(int fd, uint32_t events, void *user_data)
 		/*printf("id : %d\n", frame.can_id);
 		 printf("dlc : %d\n", frame.can_dlc);*/
 
-		uint8_t data_us[6];
+		uint8_t us[6];
 		obstacle obst[6];
-		memcpy(data_us, frame.data, sizeof(data_us));
+		memcpy(us, frame.data, sizeof(us));
 		/*printf("data_us : ");
 		 for (int i = 0; i < 6; i++)
 		 printf("%0d ", data_us[i]);
 		 printf("\n");*/
-		self->m_obstacleDetector.detect(data_us, obst);
+		self->m_obstacleDetector.detect(us, obst);
 
+
+		feedbData.obst = (((obst[0].detected or obst[1].detected) ? 0x01 : 0x00) << 2) |
+						 (((obst[2].detected or obst[3].detected) ? 0x01 : 0x00) << 1) |
+						 (((obst[4].detected or obst[5].detected) ? 0x01 : 0x00) << 0);
 		//function to delete after debug
 		self->m_obstacleDetector.print(obst);
-
-		//TODO: SEND DATA TO APP
 	}
 	if (frame.can_id == CanId_SpeedData)
 	{
-		printf("Reception speed data \n");
+		/*printf("Reception speed data \n");
 		printf("%d bytes \n", nbytes);
 		printf("id : %d\n", frame.can_id);
-		printf("dlc : %d\n", frame.can_dlc);
+		printf("dlc : %d\n", frame.can_dlc);*/
 
-		uint8_t data_speed = frame.data[0];
-		printf("speed_data : %d\n", data_speed);
+		feedbData.speed = frame.data[0] / 10;
 
-		//TODO: SEND DATA TO APP
+		//printf("speed_data : %d\n", feedbData.speed);
 	}
 	if (frame.can_id == CanId_DirectionData)
 	{
-		printf("Reception direction data \n");
+		/*printf("Reception direction data \n");
 		printf("%d bytes \n", nbytes);
 		printf("id : %d\n", frame.can_id);
-		printf("dlc : %d\n", frame.can_dlc);
+		printf("dlc : %d\n", frame.can_dlc);*/
 
-		uint8_t data_direction = frame.data[0];
-		printf("data dir : %d\n", data_direction);
+		feedbData.dir = frame.data[0];
+		if(feedbData.speed == 0)
+			feedbData.dir = 3;
 
-		//TODO: SEND DATA TO APP
+		//printf("data dir : %d\n", feedbData.dir);
 	}
 	if (frame.can_id == CanId_BatteryData)
 	{
-		printf("Reception battery data \n");
+		/*printf("Reception battery data \n");
 		printf("%d bytes \n", nbytes);
 		printf("id : %d\n", frame.can_id);
-		printf("dlc : %d\n", frame.can_dlc);
+		printf("dlc : %d\n", frame.can_dlc);*/
 
-		uint8_t data_batt = frame.data[0];
-		printf("data batt : %d\n", data_batt);
-
-		//TODO: SEND DATA TO APP
+		feedbData.bat = frame.data[0];
+		//printf("data batt : %d\n", feedbData.bat);
 	}
+
+	uint8_t buf[2] = {0x00, 0x00};
+	buf[0] = ((feedbData.speed & 0x07) << 3) | ((feedbData.dir & 0x03) << 1) | ((0x00 & 0x00) << 0);
+	buf[1] = ((0x00) << 4) | ((feedbData.obst) << 2) | ((feedbData.bat & 0x03) << 0);
+
+	// TODO: GattServer::sendNotification
+	bt_gatt_server_send_notification(self->m_gattServer.m_gatt_server, handle, buf, sizeof(buf));
 }
 
 void Gateway::Ble_onTimeToSend(void* user_data)
@@ -354,8 +426,8 @@ void Gateway::Ble_onDataReceived(struct gatt_db_attribute *attrib,
 
 	self->m_carParam.mutex.unlock();
 
-	printf("dir 	: %d\n", (int) tmp_dir);
-	printf("moving 	: %d\n", (int) tmp_mov);
+	//printf("dir 	: %d\n", (int) tmp_dir);
+	//printf("moving 	: %d\n", (int) tmp_mov);
 }
 
 }  // namespace acm

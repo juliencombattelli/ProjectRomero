@@ -86,10 +86,12 @@ private:
 	int m_socket_fd;
 	struct bt_att *m_att;
 	struct gatt_db *m_gatt_db;
+	
+public:
 	struct bt_gatt_server *m_gatt_server;
-
 	std::string m_device_name;
-
+	
+private:
 	uint16_t m_gatt_svc_chngd_handle;
 	bool m_svc_chngd_enabled;
 };

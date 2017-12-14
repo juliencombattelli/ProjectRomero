@@ -11,6 +11,8 @@
 #include <cstdio>
 #include <cstdint>
 
+#include "prompt.h"
+
 namespace acm
 {
 
@@ -41,7 +43,7 @@ public:
 		{
 			if (obst[i].detected)
 			{
-				printf("||=============================||\n");
+				/*printf("||=============================||\n");
 				switch (i)
 				{
 				case 0:
@@ -64,17 +66,16 @@ public:
 				default:
 					printf("OBASTACLE DETECTED ON || SIDE RIGHT || (SR)\n");
 					break;
-				}
+				}*/
 				if (obst[i].mobile)
 				{
-					printf("Mobile\n");
+					printf(COLOR_RED "Mobile 		   " COLOR_OFF);
 				}
 				else
 				{
-					printf("Static\n");
+					printf(COLOR_GREEN "Static 		   " COLOR_OFF);
 				}
 				printf("Dist : %d cm\n", obst[i].dist);
-				printf("||=============================||\n");
 			}
 		}
 	}
