@@ -13,6 +13,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -28,6 +29,7 @@ import java.util.UUID;
 
 import io.github.controlwear.virtual.joystick.android.JoystickView;
 
+import static android.bluetooth.BluetoothGattCharacteristic.FORMAT_UINT16;
 import static android.bluetooth.BluetoothGattCharacteristic.FORMAT_UINT8;
 
 public class remote extends AppCompatActivity {
@@ -37,43 +39,43 @@ public class remote extends AppCompatActivity {
     //btGatt variables
     private BluetoothGatt btGatt;
     private BluetoothDevice btDevice;
-    BluetoothGattCharacteristic stateCharacteristic;
-    BluetoothGattCharacteristic joystickCharacteristic;
-    BluetoothGattCharacteristic alertCharacteristic;
-    BluetoothGattCharacteristic feedbackCharacteristic;
+    private BluetoothGattCharacteristic stateCharacteristic = null;
+    private BluetoothGattCharacteristic alertCharacteristic = null;
+    private BluetoothGattCharacteristic feedbackCharacteristic = null;
 
     //ble gatt constants
     public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
-    public static final Long uuidRemoteService = Long.parseLong("7DB9", 16);
-    public static final Long uuidJoystick = Long.parseLong("209D", 16);
-    public static final Long uuidState = Long.parseLong("D288", 16);
-    public static final Long uuidAlert = Long.parseLong("DCB1", 16);
-    public static final Long uuidFeedback = Long.parseLong("C15B", 16);
+    private static final Long uuidRemoteService = Long.parseLong("7DB9", 16);
+    private static final Long uuidState = Long.parseLong("D288", 16);
+    private static final Long uuidAlert = Long.parseLong("DCB1", 16);
+    private static final Long uuidFeedback = Long.parseLong("C15B", 16);
+    private final Object writeLock = new Object();
 
     //color constants
-    public static final String ice = "#94d3e2";
-    public static final String blue = "#0097bd";
-    public static final String night = "#002e39";
-    public static final String purple = "#842f7a";
+    private static final String ice = "#94d3e2";
+    private static final String blue = "#0097bd";
+    private static final String night = "#002e39";
+    private static final String purple = "#842f7a";
 
     //state variables
-    boolean started;
-    boolean connected;
-    boolean turboed;
-    boolean autonomous;
-    boolean driving;
-    int joystick_value;
+    private boolean started;
+    private boolean connected;
+    private boolean turboed;
+    private boolean autonomous;
+    private boolean driving;
+    private int joystick_value;
 
     //view variables
-    public Button connect;
-    public Button auto;
-    public Button start;
-    public Button turbo;
-    public JoystickView joystick;
-    public ImageView direction;
-    public ImageView sonar;
-    public ImageView battery;
-    public TextView speed;
+    private Button connect;
+    private Button auto;
+    private Button start;
+    private Button turbo;
+    private JoystickView joystick;
+    private ImageView direction;
+    private ImageView sonar;
+    private ImageView battery;
+    private ImageView car;
+    private TextView speed;
 
     /**
      * Finds all the objects in the view, link them to lacal variables
@@ -97,6 +99,7 @@ public class remote extends AppCompatActivity {
         sonar = findViewById(R.id.sonar);
         battery = findViewById(R.id.battery);
         speed = findViewById(R.id.speed);
+        car  = findViewById(R.id.car);
 
         setBt();
 
@@ -106,13 +109,15 @@ public class remote extends AppCompatActivity {
         setTurboButton();
         setJoystick();
 
-        speed.setText("0.0");
+        speed.setText("0.0 km/h");
 
         started = false;
         connected = false;
         autonomous = false;
         turboed = false;
         driving = false;
+        joystick_value = 7;
+
 
     }
 
@@ -315,6 +320,7 @@ public class remote extends AppCompatActivity {
      * sets the actions executed by the joystick:
      * change state variable driving
      * changes the angle value
+     * sets the refresh rate to 50 ms
      */
     private void setJoystick() {
         joystick.setOnMoveListener(new JoystickView.OnMoveListener() {
@@ -334,7 +340,7 @@ public class remote extends AppCompatActivity {
                     }
                 }
             }
-        }, 200);
+        }, 50);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -399,22 +405,18 @@ public class remote extends AppCompatActivity {
                     for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
                         uuid = gattCharacteristic.getUuid().getMostSignificantBits() >> 32;
                         Log.i(TAG, uuid + "\n");
-                        if (uuid == uuidJoystick) {
-                            joystickCharacteristic = gattCharacteristic;
-                            Log.i(TAG, "found joystick\n");
-                        } else if (uuid == uuidState) {
+                        if (uuid == uuidState) {
                             stateCharacteristic = gattCharacteristic;
                             Log.i(TAG, "found state\n");
                         } else if (uuid == uuidAlert) {
                             alertCharacteristic = gattCharacteristic;
                             Log.i(TAG, "found alert\n");
-                            enableNotification(btGatt, alertCharacteristic);
                         } else if (uuid == uuidFeedback) {
                             feedbackCharacteristic = gattCharacteristic;
                             Log.i(TAG, "found feedback\n");
-                            enableNotification(btGatt, feedbackCharacteristic);
                         }
                     }
+                    enableNotification(btGatt);
                 }
             }
         }
@@ -429,7 +431,8 @@ public class remote extends AppCompatActivity {
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic,
                                          int status) {
-            int a = characteristic.getIntValue(FORMAT_UINT8, 0);
+            //int a = characteristic.getIntValue(FORMAT_UINT8, 0);
+            int a = characteristic.getIntValue(FORMAT_UINT16, 0);
             Log.i(TAG, characteristic + "" + a + "\n");
         }
 
@@ -447,6 +450,18 @@ public class remote extends AppCompatActivity {
         }
 
         /**
+         * Callback indicating the result of a descriptor write operation.
+         *
+         * @param  gatt   GATT client invoked
+         * @param  descriptor  Descriptor that was written to the associated remote device.
+         * @param  status The result of the write operation GATT_SUCCESS if the operation succeeds.
+         */
+        @Override
+        public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+            //todo
+        }
+
+        /**
          * Callback triggered as a result of a remote characteristic notification.
          * calls functions associated with dashboard element that need to be updated
          *
@@ -455,24 +470,55 @@ public class remote extends AppCompatActivity {
          */
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            //Log.i(TAG, "notification!");
-            final int data = characteristic.getIntValue(FORMAT_UINT8, 0);
-            if (characteristic == feedbackCharacteristic) {
+            Log.i(TAG, "notification!");
+            final int data = characteristic.getIntValue(FORMAT_UINT16, 0);
+
+            //mode
+            int mode = data & 0x01;
+            //changeMode(mode);
+            //Log.i(TAG, "mode: " + mode + "\n");
+
+            //direction
+            int dir = (data >> 1) & 0x03;
+            changeDir(dir);
+            //Log.i(TAG, "dir: " + dir + "\n");
+
+            //speed
+            int speed = (data >> 3) & 0x1F;
+            changeSpeed(speed);
+
+            //battery
+            int battValue = (data >> 8) & 0x03;
+            changeBatt(battValue);
+
+            //radar
+            int radar = (data >> 10) & 0x07;
+            Log.i(TAG, "radar: " + radar + "\n");
+            changeSonar(radar);
+
+            //route
+            int route = (data >> 13) & 0x07;
+            changeCar(route);
+            Log.i(TAG, "route: " + route + "\n");
+
+            //final int data = characteristic.getIntValue(FORMAT_UINT8, 0);
+            /*if (characteristic == feedbackCharacteristic) {
                 int mode = data & 0x01;
                 //changeMode(mode);
-                Log.i(TAG, "mode: " + mode + "\n");
+                //Log.i(TAG, "mode: " + mode + "\n");
                 int dir = (data >> 1) & 0x03;
                 changeDir(dir);
-                Log.i(TAG, "dir: " + dir + "\n");
+                //Log.i(TAG, "dir: " + dir + "\n");
                 int speed = (data >> 3) & 0x1F;
                 changeSpeed(speed);
             } else if (characteristic == alertCharacteristic) {
                 int battValue = data & 0x03;
                 changeBatt(battValue);
                 int radar = (data >> 2) & 0x07;
+                Log.i(TAG, "radar: " + radar + "\n");
                 changeSonar(radar);
-                int route = (data >> 5) &  0x07;
-            }
+                int route = (data >> 5) & 0x07;
+            }*/
         }
     };
 
@@ -513,6 +559,9 @@ public class remote extends AppCompatActivity {
                     connect.setText(R.string.connect);
                 }
             });
+            stateCharacteristic = null;
+            feedbackCharacteristic = null;
+            alertCharacteristic = null;
 
         }
     }
@@ -520,17 +569,45 @@ public class remote extends AppCompatActivity {
     /**
      * Function enabling Notification for a characteristic and creating the associated descriptor.
      *
-     * @param gatt           GATT client the characteristic is associated with
-     * @param characteristic Characteristic that has been updated as a result of a remote notification event.
+     * @param gatt GATT client the characteristic is associated with
      */
-    private void enableNotification(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-        gatt.setCharacteristicNotification(characteristic, true);
-        Log.i(TAG, "notification enabled\n");
-        // 0x2902 org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
-        UUID uuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
-        BluetoothGattDescriptor descriptor = characteristic.getDescriptor(uuid);
-        descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-        gatt.writeDescriptor(descriptor);
+    private void enableNotification(BluetoothGatt gatt) {
+
+        /*if (alertCharacteristic != null) {
+            boolean result;
+            BluetoothGattCharacteristic characteristic = alertCharacteristic;
+            gatt.setCharacteristicNotification(characteristic, true);
+            // 0x2902 org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
+            UUID uuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(uuid);
+            descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            result = gatt.writeDescriptor(descriptor);
+            if (result) {
+                Log.i(TAG, "alert notification enabled\n");
+            } else {
+                Log.i(TAG, "alert notification not enabled\n");
+            }
+        }
+
+        //todo correctly
+        android.os.SystemClock.sleep(1000);*/
+
+        if (feedbackCharacteristic != null) {
+            boolean result;
+            BluetoothGattCharacteristic characteristic = feedbackCharacteristic;
+            gatt.setCharacteristicNotification(characteristic, true);
+            // 0x2902 org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
+            UUID uuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(uuid);
+            descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            result = gatt.writeDescriptor(descriptor);
+            if (result) {
+                Log.i(TAG, "feedback notification enabled\n");
+            } else {
+                Log.i(TAG, "feedback notification not enabled\n");
+            }
+        }
+
     }
 
     /**
@@ -542,12 +619,18 @@ public class remote extends AppCompatActivity {
                 joystick.setEnabled(false);
                 joystick.resetButtonPosition();
                 joystick.invalidate();
+                joystick_value = 7;
                 direction.setImageResource(R.drawable.ic_direction_ice);
                 sonar.setImageResource(R.drawable.ic_sonar);
                 battery.setImageResource(R.drawable.ic_batt_full);
+                car.setImageResource(R.drawable.ic_car);
+                speed.setText(String.valueOf(0.0)+" km/h");
+
+
             }
         });
     }
+
     /**
      * Function updating mode
      *
@@ -556,7 +639,7 @@ public class remote extends AppCompatActivity {
     private void changeMode(final int modeValue) {
         runOnUiThread(new Runnable() {
             public void run() {
-                if (modeValue == 1 & autonomous == false){
+                if (modeValue == 1 & autonomous == false) {
                     auto.setText(R.string.autonomous);
                     autonomous = true;
                     started = false;
@@ -566,7 +649,7 @@ public class remote extends AppCompatActivity {
                     Log.i(TAG, "autonomous\n");
                     start.setText(R.string.start);
                     turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
-                } else if (modeValue == 0 & autonomous == true){
+                } else if (modeValue == 0 & autonomous == true) {
                     auto.setText(R.string.manual);
                     autonomous = false;
                     started = false;
@@ -616,10 +699,10 @@ public class remote extends AppCompatActivity {
      * @param speedValue vehicle speed in m/s
      */
     private void changeSpeed(int speedValue) {
-        final double convSpeedValue = speedValue * 3.6;
+        final double convSpeedValue = speedValue * 0.36;
         runOnUiThread(new Runnable() {
             public void run() {
-                //todo
+                speed.setText(String.valueOf(convSpeedValue)+" km/h");
             }
         });
     }
@@ -663,28 +746,70 @@ public class remote extends AppCompatActivity {
                 switch (sonarValue) {
                     case 1:
                         //presence right
+                        sonar.setImageResource(R.drawable.ic_sonar_right);
                         break;
                     case 2:
                         //presence front
+                        sonar.setImageResource(R.drawable.ic_sonar_front);
                         break;
                     case 3:
                         //presence front and right
+                        sonar.setImageResource(R.drawable.ic_sonar_right_front);
                         break;
                     case 4:
                         //presence left
+                        sonar.setImageResource(R.drawable.ic_sonar_left);
                         break;
                     case 5:
                         //presence left and right
+                        sonar.setImageResource(R.drawable.ic_sonar_left_right);
                         break;
                     case 6:
                         //presence left and front
+                        sonar.setImageResource(R.drawable.ic_sonar_left_front);
                         break;
                     case 7:
                         //presence left front and right;
+                        sonar.setImageResource(R.drawable.ic_sonar_left_right_front);
                         break;
                     case 0:
                     default:
                         sonar.setImageResource(R.drawable.ic_sonar);
+                        break;
+                }
+            }
+        });
+    }
+
+    /**
+     * Function updating road side indicators according to edge distance
+     *
+     * @param carValue road side
+     */
+    private void changeCar(final int carValue) {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                switch (carValue) {
+                    case 1:
+                        //car drifting right
+                        car.setImageResource(R.drawable.ic_car_right);
+                        break;
+                    case 2:
+                        //car critically right
+                        car.setImageResource(R.drawable.ic_car_right_critical);
+                        break;
+                    case 3:
+                        //car drifting left
+                        car.setImageResource(R.drawable.ic_car_left);
+                        break;
+                    case 4:
+                        //car critically left
+                        car.setImageResource(R.drawable.ic_car_left_critical);
+                        break;
+                    case 0:
+                    default:
+                        //car centered
+                        car.setImageResource(R.drawable.ic_car);
                         break;
                 }
             }
@@ -756,10 +881,11 @@ public class remote extends AppCompatActivity {
         timer.scheduleAtFixedRate(new TimerTask() {
             int previousMessage = 7;
             int message;
+
             public void run() {
-                if (connected) {
+                if (connected && stateCharacteristic != null) {
                     message = createMessage();
-                    if (message != previousMessage){
+                    if (message != previousMessage) {
                         previousMessage = message;
                         Log.i(TAG, "to send: " + message + "\n");
                         stateCharacteristic.setValue(message, FORMAT_UINT8, 0);
@@ -774,5 +900,4 @@ public class remote extends AppCompatActivity {
 
         }, delay, period);
     }
-
 }
