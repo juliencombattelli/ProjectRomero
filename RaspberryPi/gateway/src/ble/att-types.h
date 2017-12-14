@@ -21,6 +21,9 @@
  *
  */
 
+#ifndef BLUEZ_BLE_ATT_TYPES_H_
+#define BLUEZ_BLE_ATT_TYPES_H_
+
 #include <stdint.h>
 
 #ifndef __packed
@@ -154,3 +157,5 @@ struct bt_att_pdu_error_rsp {
 #define BT_GATT_CHRC_EXT_PROP_AUTH_WRITE		0x20
 #define BT_GATT_CHRC_EXT_PROP_AUTH	(BT_GATT_CHRC_EXT_PROP_AUTH_READ | \
 					BT_GATT_CHRC_EXT_PROP_AUTH_WRITE)
+
+#endif // BLUEZ_BLE_ATT_TYPES_H_

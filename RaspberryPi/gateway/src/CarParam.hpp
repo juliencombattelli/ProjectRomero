@@ -8,15 +8,30 @@
 #ifndef ACM_H_
 #define ACM_H_
 
-
-#define UUID_ACM 		0x7DB9
-#define UUID_STATE 		0xD288
+#include <thread>
+#include <mutex>
 
 #define ACM_MODE_MANUAL 0
 #define ACM_MODE_AUTONOMOUS 1
 
-struct acm_car
+namespace acm
 {
+
+struct CarParam
+{
+	CarParam()
+	{
+		dir = 2;
+		sonar = 0;
+		new_mode = 0;
+
+		turbo = false;
+		moving = false;
+		mode = ACM_MODE_MANUAL;
+		idle = true;
+	}
+
+	std::mutex mutex;
 	int dir;
 	int sonar;
 	int new_mode;
@@ -27,7 +42,6 @@ struct acm_car
 	int idle;
 };
 
-
-void acm_car_init(struct acm_car *car);
+} // namespace acm
 
 #endif /* ACM_H_ */

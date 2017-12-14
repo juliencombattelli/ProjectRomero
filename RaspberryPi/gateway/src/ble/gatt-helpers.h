@@ -25,6 +25,9 @@
  * the Generic Attribute Profile.
  */
 
+#ifndef BLUEZ_BLE_GATT_HELPERS_H_
+#define BLUEZ_BLE_GATT_HELPERS_H_
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -114,3 +117,5 @@ bool bt_gatt_read_by_type(struct bt_att *att, uint16_t start, uint16_t end,
 					bt_gatt_request_callback_t callback,
 					void *user_data,
 					bt_gatt_destroy_func_t destroy);
+
+#endif // BLUEZ_BLE_GATT_HELPERS_H_
