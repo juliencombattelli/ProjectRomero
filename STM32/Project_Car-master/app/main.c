@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stm32f10x.h>
+#include <stdlib.h>
 
 #include "system_time.h"
 #include "manager.h"
@@ -39,8 +40,8 @@ char trame[8];
 char SpeedRx[1];
 char DirRx[1];
 unsigned int periodic_modulo = 0;     /* Global used to determine the time to send periodic CAN frame */
-unsigned int cnt_failure = 0;         /* Global used to detect a CAN failure */
 unsigned int nb_rcv = 0;							/* Global used to count the number of commands received */
+unsigned int detect_dist = 60; 				/* Global used to define de obstacle detection distance in cm */
 
 volatile uint32_t msTicks;            /* Counts 1ms timeTicks     */
 
@@ -101,79 +102,83 @@ void canPeriodic (void) {
 		
 	//Detect an obstacle at less than 2 meters and get the obstacle distance
 	
-	if (SL < 60) {
+	if (SL < detect_dist) {
 		VAL_ULTRA.ultrasound.bytes_ultrasound[0] = 1; 
 		dist = (((int)(SL)) >> 1) << 2;
 		if (dist > 252) {
 			dist = 252;
 		}
 		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += dist;
-		if (Prev_SL-SL > car_dist){
+		if (abs((int)(Prev_SL-SL)) > car_dist || (Prev_FSL < detect_dist && FSL > detect_dist)){
 			VAL_ULTRA.ultrasound.bytes_ultrasound[0] += 2; 
 		}
 	}
 	else {VAL_ULTRA.ultrasound.bytes_ultrasound[0] = 0;}
 	
-	if (FSL < 60) {
+	if (FSL < detect_dist) {
 		VAL_ULTRA.ultrasound.bytes_ultrasound[1] = 1;
 		dist = (((int)(FSL)) >> 1) << 2;
 		if (dist > 252) {
 			dist = 252;
 		}		
 		VAL_ULTRA.ultrasound.bytes_ultrasound[1] += dist;
-		if (Prev_FSL-FSL > car_dist){
+		if (abs((int)(Prev_FSL-FSL)) > car_dist || (Prev_SL < detect_dist && SL > detect_dist) 
+			|| (Prev_FL < detect_dist && FL > detect_dist)){
 			VAL_ULTRA.ultrasound.bytes_ultrasound[1] += 2; 
 		}
 	}	
 	else {VAL_ULTRA.ultrasound.bytes_ultrasound[1] = 0;}	
 	
-	if (FL < 60) {
+	if (FL < detect_dist) {
 		VAL_ULTRA.ultrasound.bytes_ultrasound[2] = 1; 
 		dist = (((int)(FL)) >> 1) << 2;
 		if (dist > 252) {
 			dist = 252;
 		}
 		VAL_ULTRA.ultrasound.bytes_ultrasound[2] += dist;
-		if (Prev_FL-FL > car_dist){
+		if (abs((int)(Prev_FL-FL)) > car_dist || (Prev_FSL < detect_dist && FSL > detect_dist) 
+			|| (Prev_FR < detect_dist && FR > detect_dist)){
 			VAL_ULTRA.ultrasound.bytes_ultrasound[2] += 2; 
 		}
 	}		
 	else {VAL_ULTRA.ultrasound.bytes_ultrasound[2] = 0;}
 	
-	if (FR < 60) {
+	if (FR < detect_dist) {
 		VAL_ULTRA.ultrasound.bytes_ultrasound[3] = 1; 
 		dist = (((int)(FR)) >> 1) << 2;
 		if (dist > 252) {
 			dist = 252;
 		}
 		VAL_ULTRA.ultrasound.bytes_ultrasound[3] += dist;
-		if (Prev_FR-FR > car_dist){
+		if (abs((int)(Prev_FR-FR)) > car_dist || (Prev_FL < detect_dist && FL > detect_dist)
+			|| (Prev_FSR < detect_dist && FSR > detect_dist)){
 			VAL_ULTRA.ultrasound.bytes_ultrasound[3] += 2; 
 		}
 	}
 	else {VAL_ULTRA.ultrasound.bytes_ultrasound[3] = 0;}
 	
-	if (FSR < 60) {
+	if (FSR < detect_dist) {
 		VAL_ULTRA.ultrasound.bytes_ultrasound[4] = 1;
 		dist = (((int)(FSR)) >> 1) << 2;
 		if (dist > 252) {
 			dist = 252;
 		}		
 		VAL_ULTRA.ultrasound.bytes_ultrasound[4] += dist;
-		if (Prev_FSR-FSR > car_dist){
+		if (abs((int)(Prev_FSR-FSR)) > car_dist || (Prev_FR < detect_dist && FR > detect_dist)
+			|| (Prev_SR < detect_dist && SR > detect_dist)){
 			VAL_ULTRA.ultrasound.bytes_ultrasound[4] += 2; 
 		}
 	}		
 	else {VAL_ULTRA.ultrasound.bytes_ultrasound[4] = 0;}
 	
-	if (SR < 60) {
+	if (SR < detect_dist) {
 		VAL_ULTRA.ultrasound.bytes_ultrasound[5] = 1; 
 		dist = (((int)(SR)) >> 1) << 2;
 		if (dist > 252) {
 			dist = 252;
 		}
 		VAL_ULTRA.ultrasound.bytes_ultrasound[5] += dist;
-		if (Prev_SR-SR > car_dist){
+		if (abs((int)(Prev_SR-SR)) > car_dist || (Prev_FSR < detect_dist && FSR > detect_dist)){
 			VAL_ULTRA.ultrasound.bytes_ultrasound[5] += 2; 
 		}		
 	}	
@@ -281,17 +286,12 @@ void canPeriodic (void) {
 	}		
 	
 	
-	// stop the car if no command messages received during the last second
-	if (cnt_failure == 4) {		
-		if (nb_rcv == 0){
+	// stop the car if no command messages received during the last 200 millisecond
+	if (nb_rcv == 0){
 			SpeedRx[0] = 0;
-			DirRx[0] = 0;
+			DirRx[0] = 0;			
 		}	
-		cnt_failure = 0;
-	}
-	else if (cnt_failure < 4) {
-		cnt_failure ++;
-	}
+	nb_rcv = 0;		
 }
 
 
