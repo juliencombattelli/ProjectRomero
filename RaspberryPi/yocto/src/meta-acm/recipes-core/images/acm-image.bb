@@ -19,6 +19,14 @@ IMAGE_INSTALL_append =  " \
 	canutils \
 	libsocketcan \
 	spitools \
+	git \
+	cmake \
+	opencv \
+	gstreamer1.0 \
+	v4l-utils \
+	v4l-utils-dev \
+	libjpeg-turbo \
+	libjpeg-turbo-dev \
 "
 
-KERNEL_MODULE_AUTOLOAD += "mcp251x"
+KERNEL_MODULE_AUTOLOAD += "mcp251x bcm2835-v4l2"
