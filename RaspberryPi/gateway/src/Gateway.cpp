@@ -163,6 +163,12 @@ int Gateway::run()
 	timer.mainloopAttach(Can_onTimeToSend, this);
 
 	/*
+	* Create thread autonomous
+	*/
+	pthread_create(thread, NULL,AutonomousControl, NULL); 
+
+
+	/*
 	 * Initialize signal to handle SIGINT and SIGTERM
 	 */
 	signal.add(SIGINT);
@@ -173,6 +179,33 @@ int Gateway::run()
 	 * Run main event loop
 	 */
 	return mainloop_run();
+}
+
+//TODO: replace this function by a periodic signal (period must be defined)
+void Gateway::AutonomousControl(void *arg) {
+	int it ; 
+	int stop ; 
+	while(1) {
+		obstacle obstacles[6]; 
+
+		self->m_carParamIn.mutex.lock();
+		memcpy(obstacles,self->m_carParamIn.obstacles,sizeof(obstacles));		
+		self->m_carParamIn.mutex.unlock();	
+
+		it=0 ; 
+		stop=0 ; 
+		while(it<6) {
+			if(obstacles[it].detected==1 && obstacles[it].mobile==0  obstacles[it].dist<=30) { //static and speed= 1.5
+				printf("====STOP====\n") ; //send STOP frame 
+				break ;
+			} else if(obstacles[it].detected==1 && obstacles[it].mobile==1  obstacles[it].dist<=100) { //mobile and speed= 3
+				printf("====STOP====\n") ; //send STOP frame 
+				break ; 
+			}
+			it++ ; 
+		}
+		usleep(200) ; 		
+	}
 }
 
 void Gateway::signalCallback(int signum, void *user_data)
@@ -197,9 +230,9 @@ void Gateway::Can_onTimeToSend(void* user_data)
 	//Multiply the period by 2
 	if (i == 0)
 	{
-		self->m_carParam.mutex.lock();
-		int dir = self->m_carParam.dir;
-		self->m_carParam.mutex.unlock();
+		self->m_carParamOut.mutex.lock();
+		int dir = self->m_carParamOut.dir;
+		self->m_carParamOut.mutex.unlock();
 
 		/*uint16_t direction = '0';
 		switch (dir)
@@ -222,10 +255,10 @@ void Gateway::Can_onTimeToSend(void* user_data)
 	}
 	else if (i == 1)
 	{
-		self->m_carParam.mutex.lock();
-		int is_moving = self->m_carParam.moving;
-		int is_turbo = self->m_carParam.turbo;
-		self->m_carParam.mutex.unlock();
+		self->m_carParamOut.mutex.lock();
+		int is_moving = self->m_carParamOut.moving;
+		int is_turbo = self->m_carParamOut.turbo;
+		self->m_carParamOut.mutex.unlock();
 
 		uint16_t speed = 0;
 
@@ -252,24 +285,8 @@ void confirm_write(gatt_db_attribute *attr, int err, void *user_data)
 	exit(1);
 }
 
-struct FeedbData
-{
-	uint8_t obst;
-	uint8_t speed;
-	uint8_t dir;
-	uint8_t bat;
-};
-
 void Gateway::Can_onDataReceived(int fd, uint32_t events, void *user_data)
 {
-	static FeedbData feedbData =
-	{
-			0,
-			0,
-			0,
-			0
-	};
-
 	Gateway* self = (decltype(self)) user_data;
 
 	int nbytes;
@@ -290,6 +307,11 @@ void Gateway::Can_onDataReceived(int fd, uint32_t events, void *user_data)
 		exit(1);
 	}
 
+	uint8_t obst_detection ; 
+	uint8_t speed ; 
+	uint8_t dir ; 
+	uint8_t bat ; 
+
 	if (frame.can_id == CanId_UltrasoundData)
 	{
 		//printf("Reception Data ultrasons \n");
@@ -307,9 +329,15 @@ void Gateway::Can_onDataReceived(int fd, uint32_t events, void *user_data)
 		self->m_obstacleDetector.detect(us, obst);
 
 
-		feedbData.obst = (((obst[0].detected or obst[1].detected) ? 0x01 : 0x00) << 2) |
+		obst_detection = (((obst[0].detected or obst[1].detected) ? 0x01 : 0x00) << 2) |
 						 (((obst[2].detected or obst[3].detected) ? 0x01 : 0x00) << 1) |
 						 (((obst[4].detected or obst[5].detected) ? 0x01 : 0x00) << 0);
+
+		self->m_carParamIn.mutex.lock();
+		self->m_carParamIn.obst=obst_detection ; 
+		memcpy(self->m_carParamIn.obstacles,us,sizeof(self->m_carParamIn.obstacles));		
+		self->m_carParamIn.mutex.unlock();
+
 		//function to delete after debug
 		self->m_obstacleDetector.print(obst);
 	}
@@ -320,9 +348,13 @@ void Gateway::Can_onDataReceived(int fd, uint32_t events, void *user_data)
 		printf("id : %d\n", frame.can_id);
 		printf("dlc : %d\n", frame.can_dlc);*/
 
-		feedbData.speed = frame.data[0] / 10;
+		speed = frame.data[0] / 10;
 
-		//printf("speed_data : %d\n", feedbData.speed);
+		self->m_carParamIn.mutex.lock();
+		self->m_carParamIn.speed=speed ; 
+		self->m_carParamIn.mutex.unlock();
+
+		//printf("speed_data : %d\n", speed);
 	}
 	if (frame.can_id == CanId_DirectionData)
 	{
@@ -331,11 +363,15 @@ void Gateway::Can_onDataReceived(int fd, uint32_t events, void *user_data)
 		printf("id : %d\n", frame.can_id);
 		printf("dlc : %d\n", frame.can_dlc);*/
 
-		feedbData.dir = frame.data[0];
-		if(feedbData.speed == 0)
-			feedbData.dir = 3;
+		self->m_carParamIn.mutex.lock();
+		if(self->m_carParamIn.speed==0) 
+			self->m_carParamIn.dir = 3 ; 
+		else 
+			self->m_carParamIn.dir = frame.data[0] ; 
+		self->m_carParamIn.mutex.unlock();
+		
 
-		//printf("data dir : %d\n", feedbData.dir);
+		//printf("data dir : %d\n", frame.data[0]);
 	}
 	if (frame.can_id == CanId_BatteryData)
 	{
@@ -344,13 +380,24 @@ void Gateway::Can_onDataReceived(int fd, uint32_t events, void *user_data)
 		printf("id : %d\n", frame.can_id);
 		printf("dlc : %d\n", frame.can_dlc);*/
 
-		feedbData.bat = frame.data[0];
-		//printf("data batt : %d\n", feedbData.bat);
+		bat = frame.data[0] ; 
+
+		self->m_carParamIn.mutex.lock();
+		self->m_carParamIn.bat=bat ; 
+		self->m_carParamIn.mutex.unlock();
+		//printf("data batt : %d\n", bat);
 	}
 
 	uint8_t buf[2] = {0x00, 0x00};
-	buf[0] = ((feedbData.speed & 0x07) << 3) | ((feedbData.dir & 0x03) << 1) | ((0x00 & 0x00) << 0);
-	buf[1] = ((0x00) << 4) | ((feedbData.obst) << 2) | ((feedbData.bat & 0x03) << 0);
+	self->m_carParamIn.mutex.lock();
+	obst_detection=m_carParamIn.obst ; 
+	speed=m_carParamIn.speed ; 
+	dir=m_carParamIn.dir ; 
+	bat=m_carParamIn.bat ; 
+	self->m_carParamIn.mutex.unlock();
+
+	buf[0] = ((speed & 0x07) << 3) | ((dir & 0x03) << 1) | ((0x00 & 0x00) << 0);
+	buf[1] = ((0x00) << 4) | ((obst_detection) << 2) | ((bat & 0x03) << 0);
 
 	// TODO: GattServer::sendNotification
 	bt_gatt_server_send_notification(self->m_gattServer.m_gatt_server, handle, buf, sizeof(buf));
@@ -371,60 +418,60 @@ void Gateway::Ble_onDataReceived(struct gatt_db_attribute *attrib,
 	int current_state = value[0] >> 5;
 	int current_dir = value[0] & 0x7;
 
-	self->m_carParam.mutex.lock();
+	self->m_carParamOut.mutex.lock();
 
-	self->m_carParam.dir = current_dir;
+	self->m_carParamOut.dir = current_dir;
 
 	switch (current_state)
 	{
 	case 0:
-		self->m_carParam.idle = false;
-		self->m_carParam.mode = false;
-		self->m_carParam.moving = false;
-		self->m_carParam.turbo = false;
+		self->m_carParamOut.idle = false;
+		self->m_carParamOut.mode = false;
+		self->m_carParamOut.moving = false;
+		self->m_carParamOut.turbo = false;
 		break;
 	case 1:
-		self->m_carParam.idle = true;
-		self->m_carParam.mode = false;
-		self->m_carParam.moving = false;
-		self->m_carParam.turbo = false;
+		self->m_carParamOut.idle = true;
+		self->m_carParamOut.mode = false;
+		self->m_carParamOut.moving = false;
+		self->m_carParamOut.turbo = false;
 		break;
 	case 2:
-		self->m_carParam.idle = true;
-		self->m_carParam.mode = false;
-		self->m_carParam.moving = true;
-		self->m_carParam.turbo = false;
+		self->m_carParamOut.idle = true;
+		self->m_carParamOut.mode = false;
+		self->m_carParamOut.moving = true;
+		self->m_carParamOut.turbo = false;
 		break;
 	case 3:
-		self->m_carParam.idle = true;
-		self->m_carParam.mode = false;
-		self->m_carParam.moving = false;
-		self->m_carParam.turbo = true;
+		self->m_carParamOut.idle = true;
+		self->m_carParamOut.mode = false;
+		self->m_carParamOut.moving = false;
+		self->m_carParamOut.turbo = true;
 		break;
 	case 4:
-		self->m_carParam.idle = true;
-		self->m_carParam.mode = false;
-		self->m_carParam.moving = true;
-		self->m_carParam.turbo = true;
+		self->m_carParamOut.idle = true;
+		self->m_carParamOut.mode = false;
+		self->m_carParamOut.moving = true;
+		self->m_carParamOut.turbo = true;
 		break;
 	case 5:
-		self->m_carParam.idle = false;
-		self->m_carParam.mode = true;
-		self->m_carParam.moving = false;
-		self->m_carParam.turbo = false;
+		self->m_carParamOut.idle = false;
+		self->m_carParamOut.mode = true;
+		self->m_carParamOut.moving = false;
+		self->m_carParamOut.turbo = false;
 		break;
 	case 6:
-		self->m_carParam.idle = true;
-		self->m_carParam.mode = true;
-		self->m_carParam.moving = false;
-		self->m_carParam.turbo = false;
+		self->m_carParamOut.idle = true;
+		self->m_carParamOut.mode = true;
+		self->m_carParamOut.moving = false;
+		self->m_carParamOut.turbo = false;
 		break;
 	}
 
-	int tmp_dir = self->m_carParam.dir;
-	int tmp_mov = self->m_carParam.moving;
+	int tmp_dir = self->m_carParamOut.dir;
+	int tmp_mov = self->m_carParamOut.moving;
 
-	self->m_carParam.mutex.unlock();
+	self->m_carParamOut.mutex.unlock();
 
 	//printf("dir 	: %d\n", (int) tmp_dir);
 	//printf("moving 	: %d\n", (int) tmp_mov);

@@ -6,6 +6,8 @@
 #include "CarParam.hpp"
 #include "Timerfd.hpp"
 #include "Signalfd.hpp"
+#include <pthread.h>
+
 
 #include <cstdint>
 #include "CarParam.hpp"
@@ -58,14 +60,18 @@ private:
 	static void Ble_onDataReceived(struct gatt_db_attribute *attrib,
 			unsigned int id, uint16_t offset, const uint8_t *value, size_t len,
 			uint8_t opcode, struct bt_att *att, void *user_data);
+	static void * AutonomousControl(void * arg) ; 
 
 	Timerfd timer;
 	Signalfd signal;
 
 	CanController m_canController;
 	GattServer m_gattServer;
-	CarParam m_carParam;
+	CarParamOut m_carParamOut;
+	CarParamIn m_carParamIn ; 
 	ObstacleDetector m_obstacleDetector;
+
+	pthread_t autonomousThread ; 
 };
 
 } // namespace acm
