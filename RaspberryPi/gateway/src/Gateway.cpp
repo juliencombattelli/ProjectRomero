@@ -165,7 +165,8 @@ int Gateway::run()
 	/*
 	* Create thread autonomous
 	*/
-	pthread_create(thread, NULL,AutonomousControl, NULL); 
+	pthread_t thread;
+	pthread_create(&thread, NULL,AutonomousControl, this);
 
 
 	/*
@@ -182,30 +183,39 @@ int Gateway::run()
 }
 
 //TODO: replace this function by a periodic signal (period must be defined)
-void Gateway::AutonomousControl(void *arg) {
+void* Gateway::AutonomousControl(void *arg) {
+
+	Gateway* self = (decltype(self)) arg;
+
 	int it ; 
-	int stop ; 
 	while(1) {
-		obstacle obstacles[6]; 
+		obstacle obstacles[6];
+		printf("############THREAD##########\n") ;  
 
 		self->m_carParamIn.mutex.lock();
 		memcpy(obstacles,self->m_carParamIn.obstacles,sizeof(obstacles));		
 		self->m_carParamIn.mutex.unlock();	
 
 		it=0 ; 
-		stop=0 ; 
 		while(it<6) {
-			if(obstacles[it].detected==1 && obstacles[it].mobile==0  obstacles[it].dist<=30) { //static and speed= 1.5
+			if(obstacles[it].detected==1 && obstacles[it].dist<=20) { //static and speed= 1.5
 				printf("====STOP====\n") ; //send STOP frame 
-				break ;
-			} else if(obstacles[it].detected==1 && obstacles[it].mobile==1  obstacles[it].dist<=100) { //mobile and speed= 3
+				self->m_carParamOut.mutex.lock() ; 
+				self->m_carParamOut.autonomous_locked=1 ; 
+				self->m_carParamOut.mutex.unlock() ; 				break ;
+			} else if(obstacles[it].detected==1 && obstacles[it].dist<=20) { //mobile and speed= 3
 				printf("====STOP====\n") ; //send STOP frame 
+				self->m_carParamOut.mutex.lock() ; 
+				self->m_carParamOut.autonomous_locked=1 ; 
+				self->m_carParamOut.mutex.unlock() ; 				
 				break ; 
 			}
 			it++ ; 
 		}
+
 		usleep(200) ; 		
 	}
+	return NULL;
 }
 
 void Gateway::signalCallback(int signum, void *user_data)
@@ -258,11 +268,12 @@ void Gateway::Can_onTimeToSend(void* user_data)
 		self->m_carParamOut.mutex.lock();
 		int is_moving = self->m_carParamOut.moving;
 		int is_turbo = self->m_carParamOut.turbo;
+		int auto_locked = self->m_carParamOut.autonomous_locked ; 
 		self->m_carParamOut.mutex.unlock();
 
 		uint16_t speed = 0;
 
-		if (is_moving)
+		if (is_moving && !autonomous_locked)
 		{
 			if (is_turbo)
 				speed = 2;
@@ -390,10 +401,10 @@ void Gateway::Can_onDataReceived(int fd, uint32_t events, void *user_data)
 
 	uint8_t buf[2] = {0x00, 0x00};
 	self->m_carParamIn.mutex.lock();
-	obst_detection=m_carParamIn.obst ; 
-	speed=m_carParamIn.speed ; 
-	dir=m_carParamIn.dir ; 
-	bat=m_carParamIn.bat ; 
+	obst_detection=self->m_carParamIn.obst ;
+	speed=self->m_carParamIn.speed ;
+	dir=self->m_carParamIn.dir ;
+	bat=self->m_carParamIn.bat ;
 	self->m_carParamIn.mutex.unlock();
 
 	buf[0] = ((speed & 0x07) << 3) | ((dir & 0x03) << 1) | ((0x00 & 0x00) << 0);
@@ -470,6 +481,9 @@ void Gateway::Ble_onDataReceived(struct gatt_db_attribute *attrib,
 
 	int tmp_dir = self->m_carParamOut.dir;
 	int tmp_mov = self->m_carParamOut.moving;
+
+	UNUSED(tmp_dir);
+	UNUSED(tmp_mov);
 
 	self->m_carParamOut.mutex.unlock();
 

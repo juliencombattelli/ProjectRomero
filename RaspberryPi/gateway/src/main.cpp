@@ -15,7 +15,6 @@
 #include <thread>
 #include "CanController.hpp"
 #include "CanSocket.hpp"
-#include "CarParam.hpp"
 #include "GattServer.hpp"
 #include "Gateway.hpp"
 #include "Timerfd.hpp"

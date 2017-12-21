@@ -5,12 +5,12 @@
  *      Author: GuillaumeDeBrito
  */
 
-#ifndef ACM_H_
-#define ACM_H_
+#ifndef ACM_CARPARAMIN_H_
+#define ACM_CARPARAMIN_H_
 
 #include <thread>
 #include <mutex>
-#include "ObstacleDetecor.hpp"
+#include "ObstacleDetector.hpp"
 
 #define ACM_MODE_MANUAL 0
 #define ACM_MODE_AUTONOMOUS 1
@@ -38,4 +38,4 @@ struct CarParamIn
 
 } // namespace acm
 
-#endif /* ACM_H_ */
+#endif /* ACM_CARPARAMIN_H_ */

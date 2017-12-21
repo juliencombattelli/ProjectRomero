@@ -5,8 +5,8 @@
  *      Author: JulienCombattelli
  */
 
-#ifndef ACM_H_
-#define ACM_H_
+#ifndef ACM_CARPARAMOUT_H_
+#define ACM_CARPARAMOUT_H_
 
 #include <thread>
 #include <mutex>
@@ -17,9 +17,9 @@
 namespace acm
 {
 
-struct CarParam
+struct CarParamOut
 {
-	CarParam()
+	CarParamOut()
 	{
 		dir = 2;
 		sonar = 0;
@@ -29,6 +29,8 @@ struct CarParam
 		moving = false;
 		mode = ACM_MODE_MANUAL;
 		idle = true;
+		
+		autonomous_locked=0 ; 
 	}
 
 	std::mutex mutex;
@@ -40,8 +42,10 @@ struct CarParam
 	int moving;
 	int mode;
 	int idle;
+
+	int autonomous_locked; 
 };
 
 } // namespace acm
 
-#endif /* ACM_H_ */
+#endif /* ACM_CARPARAMOUT_H_ */

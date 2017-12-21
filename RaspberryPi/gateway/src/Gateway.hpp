@@ -3,14 +3,14 @@
 
 #include "CanController.hpp"
 #include "GattServer.hpp"
-#include "CarParam.hpp"
+#include "CarParamOut.hpp"
+#include "CarParamIn.hpp"
 #include "Timerfd.hpp"
 #include "Signalfd.hpp"
 #include <pthread.h>
 
 
 #include <cstdint>
-#include "CarParam.hpp"
 #include "ObstacleDetector.hpp"
 
 namespace acm
