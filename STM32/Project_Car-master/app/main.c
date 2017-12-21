@@ -264,14 +264,14 @@ void canPeriodic (void) {
 			CAN_TxMsg.type = DATA_FRAME;		
 		
 			bat = Battery_get();
-			if(bat <= 20) {
-				VAL_POTEN.potentiometer.num_potentiometer = 3;
-			} else if(bat <= 32) {
-				VAL_POTEN.potentiometer.num_potentiometer = 2;
-			} else if(bat <= 44) {
-				VAL_POTEN.potentiometer.num_potentiometer = 1;
+			if(bat <= 15) {
+				VAL_BAT.battery.num_battery = 3;				
+			} else if(bat <= 30) {
+				VAL_BAT.battery.num_battery = 2;	
 			} else if(bat <= 60) {
-				VAL_POTEN.potentiometer.num_potentiometer = 0;
+				VAL_BAT.battery.num_battery = 1;	
+			} else if(bat <= 100) {
+				VAL_BAT.battery.num_battery = 0;	
 			}
 			
 			create_battery_frame(VAL_BAT,trame) ; 
@@ -297,9 +297,9 @@ void canPeriodic (void) {
 
 void Turn(uint8_t deg){
 	uint8_t angle = Direction_get() ;
-	if (deg > Direction_get() + 5){
+	if (deg > Direction_get() + 3){
 		FrontMotor_turn(LEFT);}
-	else if (deg < Direction_get() - 5){
+	else if (deg < Direction_get() - 3){
 		FrontMotor_turn(RIGHT);}
 	else {
 		FrontMotor_turn(NONE);}}
@@ -339,7 +339,7 @@ uint8_t angle;
 
 		
 int main (void)  {
-     SysTick_Config(SystemCoreClock / 1000);         /* SysTick 1 msec IRQ       */
+  SysTick_Config(SystemCoreClock / 1000);         /* SysTick 1 msec IRQ       */
 
 	Manager_Init();
 	Motor_QuickInit(REAR_MOTOR_L);
@@ -355,8 +355,8 @@ int main (void)  {
 	FR  = US_CalcDistance(4);
 	SR  = US_CalcDistance(5);
 	
-	SpeedRx[0] = '0';
-	DirRx[0] = '0';
+	SpeedRx[0] = 0;
+	DirRx[0] = 0;
 	
   Timer_1234_Init (TIM2, 200000);								  /* set Timer 2 every 200ms */
 	Timer_Active_IT(TIM2, 0, canPeriodic);					/* Active Timer2 IT					*/
@@ -405,25 +405,25 @@ int main (void)  {
 		
 		if (DirRx[0] == 0) //Position centrale des roues 127
 		{
-			if (angle >= 127 || angle <= 137){
+			if (angle <= 127 || angle >= 133){
 				//Motor_Enable(FRONT_MOTOR);
-				Turn(132);
+				Turn(130);
 			}
 			
 		}  
 		else if (DirRx[0] == 1) //Position à gauche des roues 155
 		{
-			if (angle >= 145 || angle <= 155){
+			if (angle <= 152 || angle >= 158){
 				//Motor_Enable(FRONT_MOTOR);
-				Turn(150);
+				Turn(155);
 			}
 			
 		}
 		else if (DirRx[0] == 2) //Position à droite des roues 106
 		{
-			if (angle >= 105 || angle <= 115){
+			if (angle <= 102 || angle >= 108){
 				//Motor_Enable(FRONT_MOTOR);
-				Turn(110);
+				Turn(105);
 			}
 		}			
   }
