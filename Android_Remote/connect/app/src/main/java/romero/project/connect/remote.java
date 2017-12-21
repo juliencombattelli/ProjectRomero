@@ -28,8 +28,6 @@ import java.util.UUID;
 
 import io.github.controlwear.virtual.joystick.android.JoystickView;
 
-import static android.bluetooth.BluetoothDevice.PHY_LE_1M_MASK;
-import static android.bluetooth.BluetoothDevice.PHY_LE_2M_MASK;
 import static android.bluetooth.BluetoothDevice.TRANSPORT_LE;
 import static android.bluetooth.BluetoothGattCharacteristic.FORMAT_UINT16;
 import static android.bluetooth.BluetoothGattCharacteristic.FORMAT_UINT8;
@@ -170,7 +168,6 @@ public class remote extends AppCompatActivity {
                     if (btGatt == null) {
                         connect.setText(R.string.connecting);
                         btGatt = btDevice.connectGatt(remote.this, false, gattCallback, TRANSPORT_LE);
-                        //btGatt = btDevice.connectGatt(remote.this, false, gattCallback);
                     }
                     Log.i(TAG, "connect\n");
                 }
@@ -403,12 +400,12 @@ public class remote extends AppCompatActivity {
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             Log.i(TAG, "notification!");
             final int data = characteristic.getIntValue(FORMAT_UINT16, 0);
-            Log.i(TAG, "data: " + data + "\n");
+            //Log.i(TAG, "data: " + data + "\n");
 
             //mode
             int mode = data & 0x01;
             changeMode(mode);
-            Log.i(TAG, "mode: " + mode + "\n");
+            //Log.i(TAG, "mode: " + mode + "\n");
 
             //direction
             int dir = (data >> 1) & 0x03;

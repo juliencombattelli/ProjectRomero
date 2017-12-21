@@ -4,8 +4,8 @@ BLEService remoteService("7DB9"); // create service
 
 // create characteristics
 BLEUnsignedIntCharacteristic state("D288", BLEWrite);
-BLEUnsignedIntCharacteristic alert("DCB1", BLERead | BLENotify);
-BLEUnsignedIntCharacteristic feedback("C15B", BLERead | BLENotify);
+BLEUnsignedLongCharacteristic alert("DCB1", BLERead | BLENotify);
+BLEUnsignedLongCharacteristic feedback("C15B", BLERead | BLENotify);
 
 int dir = 0, sonar = 0, new_mode = 0;
 int turbo = false, moving = false, mode = false, idle = false;
@@ -121,30 +121,16 @@ void stateCharacteristicWritten(BLEDevice central, BLECharacteristic characteris
         dir = 7;
       }
     }
-    int ret;
-    switch (dir) {
-      case 0:
-      case 1:
-        ret = 1;
-        break;
-      case 2:
-        ret = 2;
-        break;
-      case 3:
-      case 4:
-        ret = 3;
-        break;
-      case 7:
-      default:
-        ret = 0;
-        break;
-    }
-    ret = ret << 1;
-    Serial.print("Retour: ");
-    Serial.println(ret);
-    feedback.setValue(ret);
-
+    
   }
+  int ret = 0;
+  if (mode)
+    ret = 1;
+  ret = (ret + (dir << 1) + ((dir*4) << 3) + ((int(dir/2)) << 8) + (dir << 10) +  (dir << 13));
+  feedback.setValue(ret);
+  Serial.print("Retour: ");
+  Serial.println(ret);
+  delay(100);
   /*Serial.print("idle: ");
     Serial.println(idle);
     Serial.print("mode: ");
