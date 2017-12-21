@@ -10,6 +10,8 @@
     <string name="autonomous">Autonomous</string>
     <string name="manual">Manual</string>
     <string name="turbo">Turbo</string>
+    <string name="speed">0.0 km/h</string>
+
 
 </resources>
 

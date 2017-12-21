@@ -28,6 +28,9 @@ import java.util.UUID;
 
 import io.github.controlwear.virtual.joystick.android.JoystickView;
 
+import static android.bluetooth.BluetoothDevice.PHY_LE_1M_MASK;
+import static android.bluetooth.BluetoothDevice.PHY_LE_2M_MASK;
+import static android.bluetooth.BluetoothDevice.TRANSPORT_LE;
 import static android.bluetooth.BluetoothGattCharacteristic.FORMAT_UINT16;
 import static android.bluetooth.BluetoothGattCharacteristic.FORMAT_UINT8;
 
@@ -74,6 +77,8 @@ public class remote extends AppCompatActivity {
     private TextView speed;
     private Timer timer;
 
+    private int modeChanged;
+
     /**
      * Finds all the objects in the view, link them to lacal variables
      * call methods to set bluetooth, buttons and joystick
@@ -106,7 +111,7 @@ public class remote extends AppCompatActivity {
         setTurboButton();
         setJoystick();
 
-        speed.setText("0.0 km/h");
+        speed.setText(R.string.speed);
 
         started = false;
         connected = false;
@@ -114,6 +119,7 @@ public class remote extends AppCompatActivity {
         turboed = false;
         driving = false;
         joystick_value = 7;
+        modeChanged = 0;
 
     }
 
@@ -163,7 +169,8 @@ public class remote extends AppCompatActivity {
                 } else {
                     if (btGatt == null) {
                         connect.setText(R.string.connecting);
-                        btGatt = btDevice.connectGatt(remote.this, false, gattCallback);
+                        btGatt = btDevice.connectGatt(remote.this, false, gattCallback, TRANSPORT_LE);
+                        //btGatt = btDevice.connectGatt(remote.this, false, gattCallback);
                     }
                     Log.i(TAG, "connect\n");
                 }
@@ -191,6 +198,7 @@ public class remote extends AppCompatActivity {
                         turboed = false;
                         driving = false;
                         resetSymbols();
+                        modeChanged = 3;
                         Log.i(TAG, "manual\n");
                         start.setText(R.string.start);
                         turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
@@ -201,6 +209,7 @@ public class remote extends AppCompatActivity {
                         turboed = false;
                         driving = false;
                         resetSymbols();
+                        modeChanged = 3;
                         Log.i(TAG, "autonomous\n");
                         start.setText(R.string.start);
                         turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
@@ -332,8 +341,10 @@ public class remote extends AppCompatActivity {
                 connected = false;
                 connexionChange();
                 Log.i(TAG, "Disconnected from GATT server\n");
-                btGatt.close();
-                btGatt = null;
+                if (btGatt != null) {
+                    btGatt.close();
+                    btGatt = null;
+                }
             }
 
         }
@@ -396,33 +407,33 @@ public class remote extends AppCompatActivity {
 
             //mode
             int mode = data & 0x01;
-            //changeMode(mode);
-            //Log.i(TAG, "mode: " + mode + "\n");
+            changeMode(mode);
+            Log.i(TAG, "mode: " + mode + "\n");
 
             //direction
             int dir = (data >> 1) & 0x03;
             changeDir(dir);
-            Log.i(TAG, "dir: " + dir + "\n");
+            //Log.i(TAG, "dir: " + dir + "\n");
 
             //speed
             int speed = (data >> 3) & 0x1F;
             changeSpeed(speed);
-            Log.i(TAG, "speed: " + speed + "\n");
+            //Log.i(TAG, "speed: " + speed + "\n");
 
             //battery
             int battValue = (data >> 8) & 0x03;
             changeBatt(battValue);
-            Log.i(TAG, "battery: " + battValue + "\n");
+            //Log.i(TAG, "battery: " + battValue + "\n");
 
             //radar
             int radar = (data >> 10) & 0x07;
             changeSonar(radar);
-            Log.i(TAG, "radar: " + radar + "\n");
+            //Log.i(TAG, "radar: " + radar + "\n");
 
             //route
             int route = (data >> 13) & 0x07;
             changeCar(route);
-            Log.i(TAG, "route: " + route + "\n");
+            //Log.i(TAG, "route: " + route + "\n");
         }
     };
 
@@ -438,6 +449,7 @@ public class remote extends AppCompatActivity {
             turboed = false;
             autonomous = false;
             driving = false;
+            modeChanged = 0;
             runOnUiThread(new Runnable() {
                 public void run() {
                     auto.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
@@ -453,6 +465,7 @@ public class remote extends AppCompatActivity {
             turboed = false;
             autonomous = false;
             driving = false;
+            modeChanged = 0;
             runOnUiThread(new Runnable() {
                 public void run() {
                     auto.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
@@ -507,7 +520,8 @@ public class remote extends AppCompatActivity {
                 sonar.setImageResource(R.drawable.ic_sonar);
                 battery.setImageResource(R.drawable.ic_batt_full);
                 car.setImageResource(R.drawable.ic_car);
-                speed.setText(String.valueOf(0.0) + " km/h");
+                String conSpeedString = String.valueOf(0.0) + " km/h";
+                speed.setText(conSpeedString);
 
 
             }
@@ -519,29 +533,40 @@ public class remote extends AppCompatActivity {
      *
      * @param modeValue mode: true = autonomous, false = manual
      */
+    //Todo
     private void changeMode(final int modeValue) {
         runOnUiThread(new Runnable() {
             public void run() {
-                if (modeValue == 1 & autonomous == false) {
-                    auto.setText(R.string.autonomous);
-                    autonomous = true;
-                    started = false;
-                    turboed = false;
-                    driving = false;
-                    resetSymbols();
-                    Log.i(TAG, "autonomous\n");
-                    start.setText(R.string.start);
-                    turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
-                } else if (modeValue == 0 & autonomous == true) {
-                    auto.setText(R.string.manual);
-                    autonomous = false;
-                    started = false;
-                    turboed = false;
-                    driving = false;
-                    resetSymbols();
-                    Log.i(TAG, "manual\n");
-                    start.setText(R.string.start);
-                    turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
+                if (modeValue == 1 & !autonomous) {
+                    if (modeChanged == 0) {
+                        auto.setText(R.string.autonomous);
+                        autonomous = true;
+                        started = false;
+                        turboed = false;
+                        driving = false;
+                        resetSymbols();
+                        Log.i(TAG, "autonomous\n");
+                        start.setText(R.string.start);
+                        turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
+                    } else {
+                        modeChanged--;
+                    }
+                } else if (modeValue == 0 & autonomous) {
+                    if (modeChanged == 0) {
+                        auto.setText(R.string.manual);
+                        autonomous = false;
+                        started = false;
+                        turboed = false;
+                        driving = false;
+                        resetSymbols();
+                        Log.i(TAG, "manual\n");
+                        start.setText(R.string.start);
+                        turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
+                    } else {
+                        modeChanged--;
+                    }
+                } else {
+                    modeChanged = 0;
                 }
             }
         });
@@ -587,7 +612,6 @@ public class remote extends AppCompatActivity {
         final String conSpeedString = String.valueOf(df.format(convSpeedValue)) + " km/h";
         runOnUiThread(new Runnable() {
             public void run() {
-                //todo
                 speed.setText(conSpeedString);
             }
         });

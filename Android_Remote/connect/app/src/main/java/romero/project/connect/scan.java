@@ -126,8 +126,8 @@ public class scan extends AppCompatActivity {
 
         ////////////////////////////////--------------------------////////////////////////
         //identifying layout elements
-        list = (TableLayout) findViewById(R.id.list);
-        scanningButton = (Button) findViewById(R.id.scanButton);
+        list = findViewById(R.id.list);
+        scanningButton = findViewById(R.id.scanButton);
 
         //initializing buttons
         scanning = false;
@@ -250,7 +250,7 @@ public class scan extends AppCompatActivity {
         tRow.addView(lView);
         tRow.addView(button);
 
-        list.addView(tRow, new TableLayout.LayoutParams(TableRow.LayoutParams.FILL_PARENT, TableRow.LayoutParams.WRAP_CONTENT));
+        list.addView(tRow, new TableLayout.LayoutParams(TableRow.LayoutParams.MATCH_PARENT, TableRow.LayoutParams.WRAP_CONTENT));
     }
 
 
