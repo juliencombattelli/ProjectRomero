@@ -4,11 +4,10 @@ BLEService remoteService("7DB9"); // create service
 
 // create characteristics
 BLEUnsignedIntCharacteristic state("D288", BLEWrite);
-BLEUnsignedLongCharacteristic alert("DCB1", BLERead | BLENotify);
 BLEUnsignedLongCharacteristic feedback("C15B", BLERead | BLENotify);
-
-int dir = 0, sonar = 0, new_mode = 0;
-int turbo = false, moving = false, mode = false, idle = false;
+const int wait = 6;
+int dir = 0, sonar = 0, count = wait;
+int turbo = false, moving = false, mode = false, idle = false, new_mode = false;
 
 void setup() {
   Serial.begin(9600);
@@ -24,8 +23,6 @@ void setup() {
   // add the characteristic to the service
   remoteService.addCharacteristic(state);
   remoteService.addCharacteristic(feedback);
-  remoteService.addCharacteristic(alert);
-
   // add service
   BLE.addService(remoteService);
 
@@ -45,6 +42,37 @@ void setup() {
 void loop() {
   // poll for BLE events
   BLE.poll();
+
+  /*while(1){
+    if (mode){
+      mode = false;
+    } else {
+      mode = true;
+    }
+    delay(10000);
+  }*/
+  
+  if (new_mode != mode){
+    Serial.print(mode);
+    Serial.print(" --- ");
+    Serial.println(new_mode);
+    if (count){
+      Serial.println(count);
+      count--;
+    } else {
+      count = wait;
+      new_mode = mode;
+    }
+  } else {
+    count = wait;
+  }
+  
+  int ret = 0;
+  if (new_mode)
+    ret = 1;
+  ret = (ret + (dir << 1) + ((dir*4) << 3) + ((int(dir/2)) << 8) + (dir << 10) +  (dir << 13));
+  feedback.setValue(ret);
+  delay(500);
 }
 
 void blePeripheralConnectHandler(BLEDevice central) {
@@ -121,16 +149,8 @@ void stateCharacteristicWritten(BLEDevice central, BLECharacteristic characteris
         dir = 7;
       }
     }
-    
   }
-  int ret = 0;
-  if (mode)
-    ret = 1;
-  ret = (ret + (dir << 1) + ((dir*4) << 3) + ((int(dir/2)) << 8) + (dir << 10) +  (dir << 13));
-  feedback.setValue(ret);
-  Serial.print("Retour: ");
-  Serial.println(ret);
-  delay(100);
+  
   /*Serial.print("idle: ");
     Serial.println(idle);
     Serial.print("mode: ");

@@ -21,6 +21,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -168,6 +169,7 @@ public class remote extends AppCompatActivity {
                     if (btGatt == null) {
                         connect.setText(R.string.connecting);
                         btGatt = btDevice.connectGatt(remote.this, false, gattCallback, TRANSPORT_LE);
+                        refreshDeviceCache(btGatt);
                     }
                     Log.i(TAG, "connect\n");
                 }
@@ -195,7 +197,7 @@ public class remote extends AppCompatActivity {
                         turboed = false;
                         driving = false;
                         resetSymbols();
-                        modeChanged = 3;
+                        modeChanged = 5;
                         Log.i(TAG, "manual\n");
                         start.setText(R.string.start);
                         turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
@@ -206,7 +208,7 @@ public class remote extends AppCompatActivity {
                         turboed = false;
                         driving = false;
                         resetSymbols();
-                        modeChanged = 3;
+                        modeChanged = 5;
                         Log.i(TAG, "autonomous\n");
                         start.setText(R.string.start);
                         turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
@@ -236,7 +238,9 @@ public class remote extends AppCompatActivity {
                         driving = false;
                         resetSymbols();
                         Log.i(TAG, "stop\n");
-                        turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
+                        if (!autonomous) {
+                            turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
+                        }
                     } else {
                         start.setText(R.string.stop);
                         started = true;
@@ -331,7 +335,6 @@ public class remote extends AppCompatActivity {
                 messageSend();
                 Log.i(TAG, "Connected to GATT server\n");
                 btGatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
-                //btGatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_BALANCED);
                 btGatt.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 resetSymbols();
@@ -436,7 +439,19 @@ public class remote extends AppCompatActivity {
 
     ////////////////////////////////////////////////////////////////////////////////
     //functions
-
+    private boolean refreshDeviceCache(BluetoothGatt gatt){
+        try {
+            BluetoothGatt localBluetoothGatt = gatt;
+            Method localMethod = localBluetoothGatt.getClass().getMethod("refresh", new Class[0]);
+            if (localMethod != null) {
+                return ((Boolean) localMethod.invoke(localBluetoothGatt, new Object[0])).booleanValue();
+            }
+        }
+        catch (Exception localException) {
+            Log.e(TAG, "An exception occured while refreshing device");
+        }
+        return false;
+    }
     /**
      * Function changing the UI and changing state variables according to the connection state
      */
