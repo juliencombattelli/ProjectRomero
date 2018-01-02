@@ -4,11 +4,10 @@ BLEService remoteService("7DB9"); // create service
 
 // create characteristics
 BLEUnsignedIntCharacteristic state("D288", BLEWrite);
-BLEUnsignedIntCharacteristic alert("DCB1", BLERead | BLENotify);
-BLEUnsignedIntCharacteristic feedback("C15B", BLERead | BLENotify);
-
-int dir = 0, sonar = 0, new_mode = 0;
-int turbo = false, moving = false, mode = false, idle = false;
+BLEUnsignedLongCharacteristic feedback("C15B", BLERead | BLENotify);
+const int wait = 6;
+int dir = 0, sonar = 0, count = wait;
+int turbo = false, moving = false, mode = false, idle = false, new_mode = false;
 
 void setup() {
   Serial.begin(9600);
@@ -24,8 +23,6 @@ void setup() {
   // add the characteristic to the service
   remoteService.addCharacteristic(state);
   remoteService.addCharacteristic(feedback);
-  remoteService.addCharacteristic(alert);
-
   // add service
   BLE.addService(remoteService);
 
@@ -35,7 +32,6 @@ void setup() {
 
   // assign event handlers for characteristic
   state.setEventHandler(BLEWritten, stateCharacteristicWritten);
-  state.setValue(0);
 
   // start advertising
   BLE.advertise();
@@ -46,6 +42,37 @@ void setup() {
 void loop() {
   // poll for BLE events
   BLE.poll();
+
+  /*while(1){
+    if (mode){
+      mode = false;
+    } else {
+      mode = true;
+    }
+    delay(10000);
+  }*/
+  
+  if (new_mode != mode){
+    Serial.print(mode);
+    Serial.print(" --- ");
+    Serial.println(new_mode);
+    if (count){
+      Serial.println(count);
+      count--;
+    } else {
+      count = wait;
+      new_mode = mode;
+    }
+  } else {
+    count = wait;
+  }
+  
+  int ret = 0;
+  if (new_mode)
+    ret = 1;
+  ret = (ret + (dir << 1) + ((dir*4) << 3) + ((int(dir/2)) << 8) + (dir << 10) +  (dir << 13));
+  feedback.setValue(ret);
+  delay(500);
 }
 
 void blePeripheralConnectHandler(BLEDevice central) {
@@ -62,18 +89,11 @@ void blePeripheralDisconnectHandler(BLEDevice central) {
 
 void stateCharacteristicWritten(BLEDevice central, BLECharacteristic characteristic) {
   // central wrote new value to characteristic
-  Serial.print("State event, written: ");
   int current_state = state.value() >> 5;
-  int current_direction = state.value() & 0xF;
+  Serial.print("State: ");
   Serial.println(current_state);
+  int current_direction = state.value() & 0x7;
 
-  if (current_direction != dir){
-    dir = current_direction;
-    Serial.print("direction: ");
-    Serial.println(dir);
-    feedback.setValue(dir);
-  }
-  
   switch (current_state) {
     case 0:
       idle = false;
@@ -119,21 +139,24 @@ void stateCharacteristicWritten(BLEDevice central, BLECharacteristic characteris
       break;
   }
 
-  if (!moving){
-    if (dir){
-      dir = 7;
-      Serial.print("direction: ");
-      Serial.println(dir);
-      feedback.setValue(dir);    
+  if (current_direction != dir) {
+    dir = current_direction;
+    Serial.print("Direction: ");
+    Serial.println(dir);
+
+    if (!moving) {
+      if (dir != 7) {
+        dir = 7;
+      }
     }
   }
-   
+  
   /*Serial.print("idle: ");
-  Serial.println(idle);
-  Serial.print("mode: ");
-  Serial.println(mode);
-  Serial.print("moving: ");
-  Serial.println(moving);
-  Serial.print("turbo: ");
-  Serial.println(turbo);*/
+    Serial.println(idle);
+    Serial.print("mode: ");
+    Serial.println(mode);
+    Serial.print("moving: ");
+    Serial.println(moving);
+    Serial.print("turbo: ");
+    Serial.println(turbo);*/
 }
