@@ -27,6 +27,7 @@ public:
 	Timerfd() : m_duration_ms(0)
 	{
 		m_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+		printf("timerfd=%d\n",m_fd);
 	}
 
 	Timerfd(unsigned int msec) : m_duration_ms(msec)

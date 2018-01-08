@@ -53,7 +53,7 @@ private:
 	//// Callbacks
 	///////////////////////////////////////////////////////////////////////////
 	void signalCallback(int signum);
-	void AutonomousControl();
+	void autonomousControl();
 	void canOnTimeToSend();
 	void canOnDataReceived(int fd, uint32_t events);
 	void bleOnTimeToSend(void* user_data);
@@ -61,8 +61,9 @@ private:
 			unsigned int id, uint16_t offset, const uint8_t *value, size_t len,
 			uint8_t opcode, struct bt_att *att);
 
-	Timerfd timerCanSend;
-	Timerfd timerAutonomousProcess;
+	Timerfd timer;
+	//Timerfd timerCanSend;
+	//Timerfd timerAutonomousProcess;
 	Signalfd signal;
 
 	CanController m_canController;

@@ -133,31 +133,56 @@ int Application::run()
 			},
 			this);
 
+	timer.setDuration(1);
+	timer.mainloopAttach(
+			[](void *user_data)
+			{
+				static unsigned int canTimer = 0;
+				static unsigned int autoTimer = 0;
+
+				acm::Application* self = (decltype(self))(user_data);
+
+				canTimer++;
+				autoTimer++;
+
+				if(canTimer >= CAN_WRITE_PERIOD_MS)
+				{
+					canTimer = 0;
+					self->canOnTimeToSend();
+				}
+				if(autoTimer >= AUTO_PROCESS_PERIOD_MS)
+				{
+					autoTimer = 0;
+					self->autonomousControl();
+				}
+			},
+			this);
+
 	/*
 	 * Initialize timer to periodically write data on CAN
 	 */
-	timerCanSend.setDuration(CAN_WRITE_PERIOD_MS);
+	/*timerCanSend.setDuration(CAN_WRITE_PERIOD_MS);
 	timerCanSend.mainloopAttach(
 			[](void *user_data)
 			{
+				printf("can send callback\n");
 				acm::Application* self = (decltype(self))(user_data);
 				self->canOnTimeToSend();
 			},
-			this);
+			this);*/
 
 	/*
 	 * Initialize timer to periodically process autonomous state machine
 	 */
-	timerAutonomousProcess.setDuration(AUTO_PROCESS_PERIOD_MS);
+	/*timerAutonomousProcess.setDuration(AUTO_PROCESS_PERIOD_MS);
 	timerAutonomousProcess.mainloopAttach(
 			[](void *user_data)
 			{
+				printf("auto process callback\n");
 				acm::Application* self = (decltype(self))(user_data);
-				self->canOnTimeToSend();
+				self->autonomousControl();
 			},
-			this);
-	//timerAutonomousProcess
-
+			this);*/
 
 	/*
 	 * Initialize signal to handle SIGINT and SIGTERM
@@ -191,7 +216,7 @@ void Application::signalCallback(int signum)
 	}
 }
 
-void Application::AutonomousControl()
+void Application::autonomousControl()
 {
 	static int stop_prev = 0; // avoid changing value every iteration
 
@@ -226,10 +251,12 @@ void Application::AutonomousControl()
 	// update the parameter which will block the car
 	if(stop != stop_prev)
 	{
-		m_carParamOut.mutex.lock() ;
-			m_carParamOut.autonomous_locked = stop ;
-		m_carParamOut.mutex.unlock() ;
+		m_carParamOut.mutex.lock();
+			m_carParamOut.autonomous_locked = stop;
+		m_carParamOut.mutex.unlock();
 	}
+
+	stop_prev = stop;
 }
 
 void Application::canOnTimeToSend()
@@ -317,7 +344,7 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 			memcpy(m_carParamIn.obstacles, obst, sizeof(m_carParamIn.obstacles));
 		m_carParamIn.mutex.unlock();
 
-		printf("RECEIVED: %d\n", m_carParamIn.obstacles[1].dist);
+		//printf("RECEIVED: %d\n", m_carParamIn.obstacles[1].dist);
 	}
 	if (frame.can_id == CanId_SpeedData)
 	{
