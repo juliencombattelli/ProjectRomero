@@ -63,7 +63,8 @@ public:
 	int mainloopAttach(TFunc&& callback, void* user_data)
 	{
 		m_callback = callback;
-		return mainloop_add_fd(m_fd, EPOLLIN | EPOLLET, onTimeout, user_data, nullptr);
+		m_userData = user_data;
+		return mainloop_add_fd(m_fd, EPOLLIN | EPOLLET, onTimeout, this, nullptr);
 	}
 
 private:
@@ -82,7 +83,7 @@ private:
 		}
 
 		if(self->m_callback)
-			self->m_callback(user_data);
+			self->m_callback(self->m_userData);
 
 		self->setDuration(self->m_duration_ms);
 	}
@@ -90,6 +91,8 @@ private:
 	int m_fd;
 	unsigned int m_duration_ms;
 	std::function<void(void*)> m_callback;
+	void* m_userData;
 };
 
 #endif /* SRC_TIMERFD_HPP_ */
+
