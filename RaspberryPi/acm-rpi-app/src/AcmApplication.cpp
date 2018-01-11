@@ -379,7 +379,7 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 		speed = m_carParamIn.speed;
 		dir = m_carParamIn.dir;
 		bat = m_carParamIn.bat;
-		road_detect = m_carParamIn.road_detection;
+		road_detection = m_carParamIn.road_detection;
 		memcpy(data_obst, self->m_carParamIn.obstacles,sizeof(self->m_carParamIn.obstacles));
 		
 	m_carParamIn.mutex.unlock();
@@ -400,7 +400,7 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 	speed = speed * 0.36; // Speed conversion from dm/s to km/h
 	  
 	//////////////         CSV GENRATION         /////////////
-	fprintf(self->f, "%d;%d;%d;%d;", mode, speed, dir, road_detect);
+	fprintf(self->f, "%d;%d;%d;%d;", mode, speed, dir, road_detection);
 	for (int i = 0 ; i < 6 ; i++)
 	{
 		fprintf(self->f, "%d;%d;%d;",data_obst[i].detected,data_obst[i].mobile,data_obst[i].dist);

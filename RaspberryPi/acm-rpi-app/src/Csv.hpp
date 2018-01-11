@@ -28,7 +28,7 @@ public:
 	void generate_csv(const CarParamOut &m_carParamOut, const CarParamIn &m_carParamIn){
 		uint8_t speed;
 		speed =  m_carParamIn.speed * 0.36; // Speed conversion from dm/s to km/h
-		fprintf(self->f, "%d;%d;%d;%d;", m_carParamOut.mode, speed, m_carParamIn.dir, m_carParamIn.road_detect);
+		fprintf(self->f, "%d;%d;%d;%d;", m_carParamOut.mode, speed, m_carParamIn.dir, m_carParamIn.road_detection);
 		for (int i = 0 ; i < 6 ; i++)
 		{
 			fprintf(self->f, "%d;%d;%d;",m_carParamIn.obstacles[i].detected,m_carParamIn.obstacles[i].mobile,m_carParamIn.obstacles[i].dist);
