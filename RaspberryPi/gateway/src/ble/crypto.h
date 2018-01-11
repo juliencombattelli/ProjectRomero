@@ -21,6 +21,9 @@
  *
  */
 
+#ifndef BLUEZ_BLE_CRYPTO_H_
+#define BLUEZ_BLE_CRYPTO_H_
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -61,3 +64,5 @@ bool bt_crypto_h6(struct bt_crypto *crypto, const uint8_t w[16],
 bool bt_crypto_sign_att(struct bt_crypto *crypto, const uint8_t key[16],
 				const uint8_t *m, uint16_t m_len,
 				uint32_t sign_cnt, uint8_t signature[12]);
+
+#endif // BLUEZ_BLE_CRYPTO_H_

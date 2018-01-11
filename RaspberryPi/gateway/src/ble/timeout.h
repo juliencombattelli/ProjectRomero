@@ -17,6 +17,9 @@
  *
  */
 
+#ifndef BLUEZ_BLE_TIMEOUT_H_
+#define BLUEZ_BLE_TIMEOUT_H_
+
 #include <stdbool.h>
 
 typedef bool (*timeout_func_t)(void *user_data);
@@ -25,3 +28,5 @@ typedef void (*timeout_destroy_func_t)(void *user_data);
 unsigned int timeout_add(unsigned int timeout, timeout_func_t func,
 			void *user_data, timeout_destroy_func_t destroy);
 void timeout_remove(unsigned int id);
+
+#endif // BLUEZ_BLE_TIMEOUT_H_

@@ -22,6 +22,9 @@
  *
  */
 
+#ifndef BLUEZ_BLE_MAINLOOP_H_
+#define BLUEZ_MBLE_AINLOOP_H_
+
 #include <signal.h>
 #include <sys/epoll.h>
 
@@ -49,3 +52,5 @@ int mainloop_remove_timeout(int id);
 
 int mainloop_set_signal(sigset_t *mask, mainloop_signal_func callback,
 				void *user_data, mainloop_destroy_func destroy);
+
+#endif // BLUEZ_BLE_MAINLOOP_H_

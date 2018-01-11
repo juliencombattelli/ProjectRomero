@@ -326,6 +326,9 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 	uint8_t speed ;
 	uint8_t dir ;
 	uint8_t bat ;
+	uint8_t mode ;
+	uint8_t road_detect ;
+	obstacle data_obst[6];
 
 	if (frame.can_id == CanId_UltrasoundData)
 	{
@@ -348,7 +351,7 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 	}
 	if (frame.can_id == CanId_SpeedData)
 	{
-		speed = frame.data[0] / 10;
+		speed = frame.data[0] / 10; // speed conversion from cm/s to dm/s
 
 		m_carParamIn.mutex.lock();
 			m_carParamIn.speed = speed;
@@ -376,6 +379,9 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 		speed = m_carParamIn.speed;
 		dir = m_carParamIn.dir;
 		bat = m_carParamIn.bat;
+		road_detection = m_carParamIn.road_detection;
+		memcpy(data_obst, self->m_carParamIn.obstacles,sizeof(self->m_carParamIn.obstacles));
+		
 	m_carParamIn.mutex.unlock();
 
 	buf[0] = ((speed & 0x07) << 3) | ((dir & 0x03) << 1) | ((0x00 & 0x00) << 0);
@@ -383,6 +389,24 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 
 	// TODO: GattServer::sendNotification
 	bt_gatt_server_send_notification(m_gattServer.m_gatt_server, handle, buf, sizeof(buf));
+	
+	m_carParamOut.mutex.lock();
+		mode = m_carParamOut.mode;
+	m_carParamOut.mutex.unlock();
+	
+	csv.generate_csv(m_carParamOut, m_carParamIn);
+	
+	/*
+	speed = speed * 0.36; // Speed conversion from dm/s to km/h
+	  
+	//////////////         CSV GENRATION         /////////////
+	fprintf(self->f, "%d;%d;%d;%d;", mode, speed, dir, road_detection);
+	for (int i = 0 ; i < 6 ; i++)
+	{
+		fprintf(self->f, "%d;%d;%d;",data_obst[i].detected,data_obst[i].mobile,data_obst[i].dist);
+	}	
+	fprintf(self->f,"\n");
+	*/
 }
 
 void Application::bleOnTimeToSend(void* user_data)
