@@ -21,6 +21,9 @@
  *
  */
 
+#ifndef BLUEZ_BLE_IO_H_
+#define BLUEZ_BLE_IO_H_
+
 #include <stdbool.h>
 #include <sys/uio.h>
 
@@ -45,3 +48,5 @@ bool io_set_write_handler(struct io *io, io_callback_func_t callback,
 				void *user_data, io_destroy_func_t destroy);
 bool io_set_disconnect_handler(struct io *io, io_callback_func_t callback,
 				void *user_data, io_destroy_func_t destroy);
+
+#endif // BLUEZ_BLE_IO_H_

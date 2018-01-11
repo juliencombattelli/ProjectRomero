@@ -21,6 +21,9 @@
  *
  */
 
+#ifndef BLUEZ_BLE_UTIL_H_
+#define BLUEZ_BLE_UTIL_H_
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <alloca.h>
@@ -177,3 +180,5 @@ static inline void put_be64(uint64_t val, void *dst)
 {
 	put_unaligned(cpu_to_be64(val), (uint64_t *) dst);
 }
+
+#endif // BLUEZ_BLE_UTIL_H_

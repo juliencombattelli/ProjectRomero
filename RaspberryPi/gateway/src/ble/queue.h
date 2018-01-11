@@ -21,6 +21,9 @@
  *
  */
 
+#ifndef BLUEZ_BLE_QUEUE_H_
+#define BLUEZ_BLE_QUEUE_H_
+
 #include <stdbool.h>
 
 typedef void (*queue_destroy_func_t)(void *data);
@@ -62,3 +65,5 @@ const struct queue_entry *queue_get_entries(struct queue *queue);
 
 unsigned int queue_length(struct queue *queue);
 bool queue_isempty(struct queue *queue);
+
+#endif // BLUEZ_BLE_QUEUE_H_
