@@ -39,6 +39,7 @@ public:
 
 	static constexpr unsigned int CAN_WRITE_PERIOD_MS 		= 25;
 	static constexpr unsigned int AUTO_PROCESS_PERIOD_MS 	= 200; // TODO: choose wisely =)
+	static constexpr unsigned int CAMERA_PROCESS_PERIOD_MS  = 200 ;
 
 	Application() = default;
 	~Application() = default;
@@ -71,6 +72,7 @@ private:
 	CarParamOut m_carParamOut;
 	CarParamIn m_carParamIn ;
 	ObstacleDetector m_obstacleDetector;
+	Camera m_camera ;
 
 	pthread_t m_autonomousThread ;
 };
