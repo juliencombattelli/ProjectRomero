@@ -160,7 +160,7 @@ int Application::run()
 				if(cameraTimer >= CAMERA_PROCESS_PERIOD_MS)
 				{
 					cameraTimer = 0 ;
-					self->camera_process() ;
+					self->cameraProcess();
 				}
 			},
 			this);
@@ -223,7 +223,7 @@ void Application::signalCallback(int signum)
 	}
 }
 
-void Application::camera_process()
+void Application::cameraProcess()
 {
 	m_carParamIn.road_detection=m_camera.process() ;
 }
@@ -235,16 +235,12 @@ void Application::autonomousControl()
 	obstacle obstacles[6];
 
 	//get speed of the car
-	m_carParamIn.mutex.lock() ;
-		int car_speed = m_carParamIn.speed ;
-	m_carParamIn.mutex.unlock() ;
+	float car_speed = m_carParamIn.speed * 0.36f;
 
 	//get obstacles values
-	m_carParamIn.mutex.lock();
-		memcpy(obstacles, m_carParamIn.obstacles, sizeof(obstacles));
-	m_carParamIn.mutex.unlock();
+	memcpy(obstacles, m_carParamIn.obstacles, sizeof(obstacles));
 
-	int road_detection = m_carParamIn.mutex.road_detection ;
+	RoadDetection_t road_detection = m_carParamIn.road_detection;
 
 	int stop = 0;
 	// check for each ultrasound if there is an obstacle
@@ -253,8 +249,8 @@ void Application::autonomousControl()
 		// distance TBD //static and speed= 1.5 //mobile and speed= 3
 		if(obstacles[it].detected == 1)
 		{
-			if((obstacles[it].dist <= 40 && car_speed <= 2) ||
-			   (obstacles[it].dist <= 60 && car_speed > 2))
+			if((obstacles[it].dist <= 40 && car_speed <= 2.0f) ||
+			   (obstacles[it].dist <= 60 && car_speed > 2.0f))
 			{
 				stop = 1;
 				break;
@@ -263,16 +259,16 @@ void Application::autonomousControl()
 	}
 
 	//road_detection ; stop if critic
-	if(road_detection==2 or road_detection==4) {
+	std::cout << (int)road_detection << std::endl;
+	if(road_detection == RoadDetection_t::rightcrit or road_detection == RoadDetection_t::leftcrit)
+	{
 		stop=1 ;
 	}
 
 	// update the parameter which will block the car
 	if(stop != stop_prev)
 	{
-		m_carParamOut.mutex.lock();
-			m_carParamOut.autonomous_locked = stop;
-		m_carParamOut.mutex.unlock();
+		m_carParamOut.autonomous_locked = stop;
 	}
 
 	stop_prev = stop;
@@ -285,10 +281,8 @@ void Application::canOnTimeToSend()
 	//Multiply the period by 2
 	if (i == 0)
 	{
-		m_carParamOut.mutex.lock();
-			int dir = m_carParamOut.dir;
-			int mode = m_carParamOut.mode;
-		m_carParamOut.mutex.unlock();
+		int dir = m_carParamOut.dir;
+		int mode = m_carParamOut.mode;
 
 		if(mode == ACM_MODE_AUTONOMOUS)
 			dir=2 ;
@@ -299,20 +293,23 @@ void Application::canOnTimeToSend()
 	}
 	else if (i == 1)
 	{
-		m_carParamOut.mutex.lock();
-			int is_moving = m_carParamOut.moving;
-			int is_turbo = m_carParamOut.turbo;
-			int auto_locked = m_carParamOut.autonomous_locked ;
-			int mode = m_carParamOut.mode;
-		m_carParamOut.mutex.unlock();
+		int is_moving = m_carParamOut.moving;
+		int is_turbo = m_carParamOut.turbo;
+		int auto_locked = m_carParamOut.autonomous_locked ;
+		int mode = m_carParamOut.mode;
 
 		uint16_t speed = 0;
-		if (is_moving && !auto_locked)
+		if (mode == ACM_MODE_MANUAL)
 		{
-			if (mode == ACM_MODE_MANUAL)
+			if (is_moving && !auto_locked)
+			{
 				speed = is_turbo ? 2 : 1;
-			else
-				speed=1;
+			}
+		}
+		else if (mode == ACM_MODE_AUTONOMOUS)
+		{
+			if (!auto_locked)
+				speed = 1;
 		}
 
 		m_canController.sendMessage(CanId_SpeedCmd, (uint8_t*)&speed);
@@ -341,10 +338,11 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 		exit(1);
 	}
 
-	uint8_t obst_detection ;
-	uint8_t speed ;
-	uint8_t dir ;
-	uint8_t bat ;
+	uint8_t obst_detection;
+	uint8_t speed;
+	uint8_t dir;
+	uint8_t bat;
+	uint8_t mode;
 
 	if (frame.can_id == CanId_UltrasoundData)
 	{
@@ -358,10 +356,8 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 						 (((obst[2].detected or obst[3].detected) ? 0x01 : 0x00) << 1) |
 						 (((obst[4].detected or obst[5].detected) ? 0x01 : 0x00) << 0);
 
-		m_carParamIn.mutex.lock();
-			m_carParamIn.obst = obst_detection ;
-			memcpy(m_carParamIn.obstacles, obst, sizeof(m_carParamIn.obstacles));
-		m_carParamIn.mutex.unlock();
+		m_carParamIn.obst = obst_detection;
+		memcpy(m_carParamIn.obstacles, obst, sizeof(m_carParamIn.obstacles));
 
 		//printf("RECEIVED: %d\n", m_carParamIn.obstacles[1].dist);
 	}
@@ -369,39 +365,34 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 	{
 		speed = frame.data[0] / 10;
 
-		m_carParamIn.mutex.lock();
-			m_carParamIn.speed = speed;
-		m_carParamIn.mutex.unlock();
+		m_carParamIn.speed = speed;
 	}
 	if (frame.can_id == CanId_DirectionData)
 	{
-		m_carParamIn.mutex.lock();
-			m_carParamIn.dir = m_carParamIn.speed == 0 ? 3 : frame.data[0];
-		m_carParamIn.mutex.unlock();
+		m_carParamIn.dir = m_carParamIn.speed == 0 ? 3 : frame.data[0];
 	}
 	if (frame.can_id == CanId_BatteryData)
 	{
 		bat = frame.data[0] ;
 
-		m_carParamIn.mutex.lock();
-			m_carParamIn.bat = bat;
-		m_carParamIn.mutex.unlock();
+		m_carParamIn.bat = bat;
 	}
 
 	uint8_t buf[2] = {0x00, 0x00};
 
-	m_carParamIn.mutex.lock();
-		obst_detection = m_carParamIn.obst;
-		speed = m_carParamIn.speed;
-		dir = m_carParamIn.dir;
-		bat = m_carParamIn.bat;
-	m_carParamIn.mutex.unlock();
+	obst_detection = m_carParamIn.obst;
+	speed = m_carParamIn.speed;
+	dir = m_carParamIn.dir;
+	bat = m_carParamIn.bat;
+	mode = m_carParamOut.mode;
 
-	buf[0] = ((speed & 0x07) << 3) | ((dir & 0x03) << 1) | ((0x00 & 0x00) << 0);
+	buf[0] = ((speed & 0x07) << 3) | ((dir & 0x03) << 1) | ((mode & 0x01) << 0);
 	buf[1] = ((0x00) << 4) | ((obst_detection) << 2) | ((bat & 0x03) << 0);
 
 	// TODO: GattServer::sendNotification
 	bt_gatt_server_send_notification(m_gattServer.m_gatt_server, handle, buf, sizeof(buf));
+
+	m_csvLogger.generate_csv(m_carParamOut, m_carParamIn);
 }
 
 void Application::bleOnTimeToSend(void* user_data)
@@ -416,54 +407,52 @@ void Application::bleOnDataReceived(struct gatt_db_attribute *attrib,
 	int current_state = value[0] >> 5;
 	int current_dir = value[0] & 0x7;
 
-	m_carParamOut.mutex.lock();
-		m_carParamOut.dir = current_dir;
-		switch (current_state)
-		{
-		case 0:
-			m_carParamOut.idle = false;
-			m_carParamOut.mode = false;
-			m_carParamOut.moving = false;
-			m_carParamOut.turbo = false;
-			break;
-		case 1:
-			m_carParamOut.idle = true;
-			m_carParamOut.mode = false;
-			m_carParamOut.moving = false;
-			m_carParamOut.turbo = false;
-			break;
-		case 2:
-			m_carParamOut.idle = true;
-			m_carParamOut.mode = false;
-			m_carParamOut.moving = true;
-			m_carParamOut.turbo = false;
-			break;
-		case 3:
-			m_carParamOut.idle = true;
-			m_carParamOut.mode = false;
-			m_carParamOut.moving = false;
-			m_carParamOut.turbo = true;
-			break;
-		case 4:
-			m_carParamOut.idle = true;
-			m_carParamOut.mode = false;
-			m_carParamOut.moving = true;
-			m_carParamOut.turbo = true;
-			break;
-		case 5:
-			m_carParamOut.idle = false;
-			m_carParamOut.mode = true;
-			m_carParamOut.moving = false;
-			m_carParamOut.turbo = false;
-			break;
-		case 6:
-			m_carParamOut.idle = true;
-			m_carParamOut.mode = true;
-			m_carParamOut.moving = false;
-			m_carParamOut.turbo = false;
-			break;
-		}
-	m_carParamOut.mutex.unlock();
+	m_carParamOut.dir = current_dir;
+	switch (current_state)
+	{
+	case 0:
+		m_carParamOut.idle = false;
+		m_carParamOut.mode = false;
+		m_carParamOut.moving = false;
+		m_carParamOut.turbo = false;
+		break;
+	case 1:
+		m_carParamOut.idle = true;
+		m_carParamOut.mode = false;
+		m_carParamOut.moving = false;
+		m_carParamOut.turbo = false;
+		break;
+	case 2:
+		m_carParamOut.idle = true;
+		m_carParamOut.mode = false;
+		m_carParamOut.moving = true;
+		m_carParamOut.turbo = false;
+		break;
+	case 3:
+		m_carParamOut.idle = true;
+		m_carParamOut.mode = false;
+		m_carParamOut.moving = false;
+		m_carParamOut.turbo = true;
+		break;
+	case 4:
+		m_carParamOut.idle = true;
+		m_carParamOut.mode = false;
+		m_carParamOut.moving = true;
+		m_carParamOut.turbo = true;
+		break;
+	case 5:
+		m_carParamOut.idle = false;
+		m_carParamOut.mode = true;
+		m_carParamOut.moving = false;
+		m_carParamOut.turbo = false;
+		break;
+	case 6:
+		m_carParamOut.idle = true;
+		m_carParamOut.mode = true;
+		m_carParamOut.moving = false;
+		m_carParamOut.turbo = false;
+		break;
+	}
 }
 
 }  // namespace acm

@@ -11,6 +11,8 @@
 #include "gatt/GattServer.hpp"
 #include "CarParam.hpp"
 #include "ObstacleDetector.hpp"
+#include "Camera.hpp"
+#include "Csv.hpp"
 
 namespace acm
 {
@@ -41,7 +43,7 @@ public:
 	static constexpr unsigned int AUTO_PROCESS_PERIOD_MS 	= 200; // TODO: choose wisely =)
 	static constexpr unsigned int CAMERA_PROCESS_PERIOD_MS  = 200 ;
 
-	Application() = default;
+	Application(const std::string& csvFilename) : m_csvLogger(csvFilename) {}
 	~Application() = default;
 
 	void bleAdvertise();
@@ -55,6 +57,7 @@ private:
 	///////////////////////////////////////////////////////////////////////////
 	void signalCallback(int signum);
 	void autonomousControl();
+	void cameraProcess();
 	void canOnTimeToSend();
 	void canOnDataReceived(int fd, uint32_t events);
 	void bleOnTimeToSend(void* user_data);
@@ -72,7 +75,8 @@ private:
 	CarParamOut m_carParamOut;
 	CarParamIn m_carParamIn ;
 	ObstacleDetector m_obstacleDetector;
-	Camera m_camera ;
+	Camera m_camera;
+	Csv m_csvLogger;
 
 	pthread_t m_autonomousThread ;
 };

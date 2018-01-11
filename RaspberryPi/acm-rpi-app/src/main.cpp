@@ -9,6 +9,6 @@
 
 int main()
 {
-	acm::Application app;
+	acm::Application app("test.csv");
 	return app.run();
 }

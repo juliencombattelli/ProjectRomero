@@ -49,6 +49,15 @@ struct CarParamOut
 	int autonomous_locked;
 };
 
+enum class RoadDetection_t : uint8_t
+{
+	middle = 0,
+	right,
+	rightcrit,
+	left,
+	leftcrit
+};
+
 struct CarParamIn
 {
 	CarParamIn()
@@ -57,6 +66,7 @@ struct CarParamIn
 		speed = 0;
 		dir = 0;
 		bat = 0;
+		road_detection = RoadDetection_t::middle;
 		memset(obstacles, 0, sizeof(obstacles));
 	}
 
@@ -65,7 +75,7 @@ struct CarParamIn
 	uint8_t speed;
 	uint8_t dir;
 	uint8_t bat;
-	uint8_t road_detection ;
+	RoadDetection_t road_detection ;
 };
 
 } // namespace acm
