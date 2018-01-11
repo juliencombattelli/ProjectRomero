@@ -38,7 +38,6 @@ struct CarParamOut
 		autonomous_locked=0 ;
 	}
 
-	std::mutex mutex;
 	uint8_t dir;
 	uint8_t sonar;
 	uint8_t new_mode;
@@ -61,12 +60,12 @@ struct CarParamIn
 		memset(obstacles, 0, sizeof(obstacles));
 	}
 
-	std::mutex mutex;
 	uint8_t obst;
 	obstacle obstacles[6];
 	uint8_t speed;
 	uint8_t dir;
 	uint8_t bat;
+	uint8_t road_detection ;
 };
 
 } // namespace acm

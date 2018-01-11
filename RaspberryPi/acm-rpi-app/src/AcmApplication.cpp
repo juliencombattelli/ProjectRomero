@@ -7,6 +7,7 @@
 
 #include "AcmApplication.hpp"
 #include "common-defs.h"
+#include "Camera.hpp"
 
 namespace acm
 {
@@ -139,6 +140,7 @@ int Application::run()
 			{
 				static unsigned int canTimer = 0;
 				static unsigned int autoTimer = 0;
+				static unsigned int cameraTimer = 0 ;
 
 				acm::Application* self = (decltype(self))(user_data);
 
@@ -154,6 +156,11 @@ int Application::run()
 				{
 					autoTimer = 0;
 					self->autonomousControl();
+				}
+				if(cameraTimer >= CAMERA_PROCESS_PERIOD_MS)
+				{
+					cameraTimer = 0 ;
+					self->camera_process() ;
 				}
 			},
 			this);
@@ -216,6 +223,11 @@ void Application::signalCallback(int signum)
 	}
 }
 
+void Application::camera_process()
+{
+	m_carParamIn.road_detection=m_camera.process() ;
+}
+
 void Application::autonomousControl()
 {
 	static int stop_prev = 0; // avoid changing value every iteration
@@ -232,6 +244,8 @@ void Application::autonomousControl()
 		memcpy(obstacles, m_carParamIn.obstacles, sizeof(obstacles));
 	m_carParamIn.mutex.unlock();
 
+	int road_detection = m_carParamIn.mutex.road_detection ;
+
 	int stop = 0;
 	// check for each ultrasound if there is an obstacle
 	for (int it = 0; it < 6; it++)
@@ -246,6 +260,11 @@ void Application::autonomousControl()
 				break;
 			}
 		}
+	}
+
+	//road_detection ; stop if critic
+	if(road_detection==2 or road_detection==4) {
+		stop=1 ;
 	}
 
 	// update the parameter which will block the car
