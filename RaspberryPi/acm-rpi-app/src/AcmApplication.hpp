@@ -11,6 +11,7 @@
 #include "gatt/GattServer.hpp"
 #include "CarParam.hpp"
 #include "ObstacleDetector.hpp"
+#include "Csv.hpp"
 
 namespace acm
 {
@@ -40,7 +41,7 @@ public:
 	static constexpr unsigned int CAN_WRITE_PERIOD_MS 		= 25;
 	static constexpr unsigned int AUTO_PROCESS_PERIOD_MS 	= 200; // TODO: choose wisely =)
 
-	Application() = default;
+	Application(const std::string &fileName) : csv(fileName); 
 	~Application() = default;
 
 	void bleAdvertise();
@@ -73,6 +74,8 @@ private:
 	ObstacleDetector m_obstacleDetector;
 
 	pthread_t m_autonomousThread ;
+	
+	Csv csv;
 };
 
 } // namespace acm
