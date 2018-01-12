@@ -7,7 +7,7 @@ set(EXECUTABLE_NAME acm-rpi-app)
 
 
 # Find pkgconfig
-find_package(PkgConfig REQUIRED)
+find_package(PkgConfig REQUIRED core highgui imgproc videoio)
 
 # Find Glib2
 pkg_check_modules(GLIB2 REQUIRED glib-2.0)
@@ -26,6 +26,12 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 list(APPEND LIBRARIES_LIST Threads::Threads)
 
+# Find OpenCV
+# WARNING : OpenCVConfig.cmake seems to be broken with gcc 7.2
+#find_package(OpenCV  REQUIRED)
+#include_directories(${OpenCV_INCLUDE_DIRS})
+#link_directories(${OpenCV_LIB_DIR})
+list(APPEND LIBRARIES_LIST opencv_core opencv_highgui opencv_imgproc opencv_videoio) #${OpenCV_LIBS})
 
 # Set source and header directories
 set(PROJECT_SOURCE_DIR src)
