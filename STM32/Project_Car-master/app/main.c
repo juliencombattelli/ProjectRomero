@@ -362,14 +362,7 @@ int main (void)  {
 	Timer_Active_IT(TIM2, 0, canPeriodic);					/* Active Timer2 IT					*/
 	
   while (1) {
-		angle = Direction_get() ;	
-		
-		FSL  = US_CalcDistance(0);
-		FL  = US_CalcDistance(1);
-		FSR  = US_CalcDistance(2);
-		SL = US_CalcDistance(3);
-		FR  = US_CalcDistance(4);
-		SR = US_CalcDistance(5);	
+		angle = Direction_get() ;				
 		
 		if (CAN_RxRdy) {                              //rx msg on CAN Ctrl 
 			nb_rcv ++;
@@ -405,26 +398,41 @@ int main (void)  {
 		
 		if (DirRx[0] == 0) //Position centrale des roues 127
 		{
-			if (angle <= 127 || angle >= 133){
+			if (angle <= 124 || angle >= 130){
 				//Motor_Enable(FRONT_MOTOR);
-				Turn(130);
-			}
-			
+				Turn(127);
+			}			
 		}  
-		else if (DirRx[0] == 1) //Position à gauche des roues 155
+		else if (DirRx[0] == 1) //Position à extrême gauche des roues 155
 		{
 			if (angle <= 152 || angle >= 158){
 				//Motor_Enable(FRONT_MOTOR);
 				Turn(155);
-			}
-			
+			}			
 		}
-		else if (DirRx[0] == 2) //Position à droite des roues 106
+		else if (DirRx[0] == 2) //Position à extrême droite des roues 106
 		{
 			if (angle <= 102 || angle >= 108){
 				//Motor_Enable(FRONT_MOTOR);
 				Turn(105);
 			}
-		}			
+		}	
+		else if (DirRx[0] == 3) //Position à gauche des roues 141
+		{
+			if (angle <= 138 || angle >= 144){
+				//Motor_Enable(FRONT_MOTOR);
+				Turn(141);
+			}			
+		}
+		else if (DirRx[0] == 4) //Position à droite des roues 117
+		{
+			if (angle <= 114 || angle >= 120){
+				//Motor_Enable(FRONT_MOTOR);
+				Turn(117);
+			}
+		}	
+		
+
+		
   }
 }
