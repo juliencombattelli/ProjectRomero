@@ -8,8 +8,7 @@
 #ifndef ACM_H_
 #define ACM_H_
 
-#include <thread>
-#include <mutex>
+#include <cstring>
 
 #include "ObstacleDetector.hpp"
 
@@ -28,25 +27,25 @@ struct CarParamOut
 	{
 		dir = 2;
 		sonar = 0;
-		new_mode = ACM_MODE_MANUAL;
+		newMode = ACM_MODE_MANUAL;
 		mode = ACM_MODE_MANUAL;
 
 		turbo = false;
 		moving = false;
 		idle = true;
 
-		autonomous_locked=0 ;
+		autonomousLocked=0 ;
 	}
 
 	uint8_t dir;
 	uint8_t sonar;
-	uint8_t new_mode;
+	uint8_t newMode;
 	uint8_t mode;
 	bool turbo;
 	bool moving;
 	bool idle;
 
-	int autonomous_locked;
+	int autonomousLocked;
 };
 
 enum class RoadDetection_t : uint8_t
@@ -66,7 +65,7 @@ struct CarParamIn
 		speed = 0;
 		dir = 0;
 		bat = 0;
-		road_detection = RoadDetection_t::middle;
+		roadDetection = RoadDetection_t::middle;
 		memset(obstacles, 0, sizeof(obstacles));
 	}
 
@@ -75,7 +74,7 @@ struct CarParamIn
 	uint8_t speed;
 	uint8_t dir;
 	uint8_t bat;
-	RoadDetection_t road_detection ;
+	RoadDetection_t roadDetection ;
 };
 
 } // namespace acm

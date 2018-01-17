@@ -8,6 +8,7 @@
 #include "AcmApplication.hpp"
 #include "common-defs.h"
 #include "Camera.hpp"
+#include "utils/Timing.hpp"
 
 namespace acm
 {
@@ -98,7 +99,7 @@ int Application::run()
 	struct gatt_db_attribute *acm_service = m_gattServer.add_service(BleUuid_AcmService);
 
 	m_gattServer.add_characteristic(acm_service, BleUuid_AcmCharState,
-	BT_ATT_PERM_WRITE, BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP, NULL,
+	BT_ATT_PERM_WRITE, BT_GATT_CHRC_PROP_WRITE_WITHOUT_RESP, nullptr,
 			[](struct gatt_db_attribute *attrib, unsigned int id, uint16_t offset, const uint8_t *value,
 			   size_t len, uint8_t opcode, struct bt_att *att, void *user_data)
 			{
@@ -125,7 +126,6 @@ int Application::run()
 	 */
 	m_canController.registerMessageType(CanId_DirectionCmd, 2);
 	m_canController.registerMessageType(CanId_SpeedCmd, 2);
-	// TODO: add other type of messages
 	m_canController.mainloopAttachRead(
 			[](int fd, uint32_t events, void *user_data)
 			{
@@ -134,69 +134,48 @@ int Application::run()
 			},
 			this);
 
-	timer.setDuration(1);
-	timer.mainloopAttach(
+	/*
+	 * Initialize timer to periodically write data on CAN
+	 */
+	m_timerCanSend.setDuration(CAN_WRITE_PERIOD_MS);
+	m_timerCanSend.mainloopAttach(
 			[](void *user_data)
 			{
-				static unsigned int canTimer = 0;
-				static unsigned int autoTimer = 0;
-				static unsigned int cameraTimer = 0 ;
-
 				acm::Application* self = (decltype(self))(user_data);
-
-				canTimer++;
-				autoTimer++;
-
-				if(canTimer >= CAN_WRITE_PERIOD_MS)
-				{
-					canTimer = 0;
-					self->canOnTimeToSend();
-				}
-				if(autoTimer >= AUTO_PROCESS_PERIOD_MS)
-				{
-					autoTimer = 0;
-					self->autonomousControl();
-				}
-				if(cameraTimer >= CAMERA_PROCESS_PERIOD_MS)
-				{
-					cameraTimer = 0 ;
-					self->cameraProcess();
-				}
+				self->canOnTimeToSend();
 			},
 			this);
 
 	/*
-	 * Initialize timer to periodically write data on CAN
-	 */
-	/*timerCanSend.setDuration(CAN_WRITE_PERIOD_MS);
-	timerCanSend.mainloopAttach(
-			[](void *user_data)
-			{
-				printf("can send callback\n");
-				acm::Application* self = (decltype(self))(user_data);
-				self->canOnTimeToSend();
-			},
-			this);*/
-
-	/*
 	 * Initialize timer to periodically process autonomous state machine
 	 */
-	/*timerAutonomousProcess.setDuration(AUTO_PROCESS_PERIOD_MS);
-	timerAutonomousProcess.mainloopAttach(
+	m_timerAutonomousProcess.setDuration(AUTO_PROCESS_PERIOD_MS);
+	m_timerAutonomousProcess.mainloopAttach(
 			[](void *user_data)
 			{
-				printf("auto process callback\n");
 				acm::Application* self = (decltype(self))(user_data);
 				self->autonomousControl();
 			},
-			this);*/
+			this);
+
+	/*
+	 * Initialize timer to periodically process camera frame
+	 */
+	m_timerAutonomousProcess.setDuration(CAMERA_PROCESS_PERIOD_MS);
+	m_timerAutonomousProcess.mainloopAttach(
+			[](void *user_data)
+			{
+				acm::Application* self = (decltype(self))(user_data);
+				self->cameraProcess();
+			},
+			this);
 
 	/*
 	 * Initialize signal to handle SIGINT and SIGTERM
 	 */
-	signal.add(SIGINT);
-	signal.add(SIGTERM);
-	signal.mainloopAttach(
+	m_signal.add(SIGINT);
+	m_signal.add(SIGTERM);
+	m_signal.mainloopAttach(
 			[](int signum, void *user_data)
 			{
 				acm::Application* self = (decltype(self))(user_data);
@@ -212,6 +191,8 @@ int Application::run()
 
 void Application::signalCallback(int signum)
 {
+	auto timestart = std::chrono::steady_clock::now();
+
 	switch (signum)
 	{
 	case SIGINT:
@@ -221,36 +202,49 @@ void Application::signalCallback(int signum)
 	default:
 		break;
 	}
+
+	auto timeend = std::chrono::steady_clock::now();
+	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
+	m_timeLogger.write("signalCallback : ", execduration);
 }
 
 void Application::cameraProcess()
 {
-	m_carParamIn.road_detection=m_camera.process() ;
+	auto timestart = std::chrono::steady_clock::now();
+
+	m_carParamIn.roadDetection = m_camera.process();
+
+	auto timeend = std::chrono::steady_clock::now();
+	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
+	m_timeLogger.write("cameraProcess : ", execduration);
 }
 
 void Application::autonomousControl()
 {
-	static int stop_prev = 0; // avoid changing value every iteration
+	auto timestart = std::chrono::steady_clock::now();
+
+	static int stopPrev = 0; // avoid changing value every iteration
 
 	obstacle obstacles[6];
 
 	//get speed of the car
-	float car_speed = m_carParamIn.speed * 0.36f;
+	float carSpeed = m_carParamIn.speed * 0.36f;
 
 	//get obstacles values
 	memcpy(obstacles, m_carParamIn.obstacles, sizeof(obstacles));
 
-	RoadDetection_t road_detection = m_carParamIn.road_detection;
+	RoadDetection_t roadDetection = m_carParamIn.roadDetection;
 
 	int stop = 0;
 	// check for each ultrasound if there is an obstacle
-	for (int it = 0; it < 6; it++)
+	for(const auto& [usId, usParam] : usSensorParams)
 	{
-		// distance TBD //static and speed= 1.5 //mobile and speed= 3
-		if(obstacles[it].detected == 1)
+		if(obstacles[usId].detected)
 		{
-			if((obstacles[it].dist <= 40 && car_speed <= 2.0f) ||
-			   (obstacles[it].dist <= 60 && car_speed > 2.0f))
+			if((obstacles[usId].dist <= usParam.detectionDistanceNormal_cm
+					and carSpeed <= usParam.speedThresholdNormalTurbo_dmps)
+				or (obstacles[usId].dist <= usParam.detectionDistanceTurbo_cm
+					and carSpeed >  usParam.speedThresholdNormalTurbo_dmps))
 			{
 				stop = 1;
 				break;
@@ -258,24 +252,64 @@ void Application::autonomousControl()
 		}
 	}
 
+	/*for (int it = 0; it < 6; it++)
+	{
+		// distance TBD //static and speed= 1.5 //mobile and speed= 3
+		if(obstacles[it].detected == 1)
+		{
+			if(it == 2 or it == 3)
+			{
+				if((obstacles[it].dist <= 100 && car_speed <= SPEED_THRESHOLD_NORMAL_TURBO) ||
+				   (obstacles[it].dist <= 140 && car_speed > SPEED_THRESHOLD_NORMAL_TURBO))
+				{
+					stop = 1;
+					break;
+				}
+			}
+			if(it == 0 or it == 4)
+			{
+				if((obstacles[it].dist <= 20 && car_speed <= SPEED_THRESHOLD_NORMAL_TURBO) ||
+				   (obstacles[it].dist <= 40 && car_speed > SPEED_THRESHOLD_NORMAL_TURBO))
+				{
+					stop = 1;
+					break;
+				}
+			}
+			else
+			{
+				if((obstacles[it].dist <= 40 && car_speed <= SPEED_THRESHOLD_NORMAL_TURBO) ||
+				   (obstacles[it].dist <= 60 && car_speed > SPEED_THRESHOLD_NORMAL_TURBO))
+				{
+					stop = 1;
+					break;
+				}
+			}
+		}
+	}*/
+
 	//road_detection ; stop if critic
-	std::cout << (int)road_detection << std::endl;
-	if(road_detection == RoadDetection_t::rightcrit or road_detection == RoadDetection_t::leftcrit)
+	if(roadDetection == RoadDetection_t::rightcrit or roadDetection == RoadDetection_t::leftcrit)
 	{
 		stop=1 ;
 	}
 
 	// update the parameter which will block the car
-	if(stop != stop_prev)
+	if(stop != stopPrev)
 	{
-		m_carParamOut.autonomous_locked = stop;
+		m_carParamOut.autonomousLocked = stop;
 	}
 
-	stop_prev = stop;
+	stopPrev = stop;
+
+	auto timeend = std::chrono::steady_clock::now();
+	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
+	m_timeLogger.write("autonomousControl : ", execduration);
 }
 
 void Application::canOnTimeToSend()
 {
+	auto timestart = std::chrono::steady_clock::now();
+
 	static int i = 0;
 
 	//Multiply the period by 2
@@ -293,22 +327,20 @@ void Application::canOnTimeToSend()
 	}
 	else if (i == 1)
 	{
-		int is_moving = m_carParamOut.moving;
-		int is_turbo = m_carParamOut.turbo;
-		int auto_locked = m_carParamOut.autonomous_locked ;
+		int isMoving = m_carParamOut.moving;
+		int isTurbo = m_carParamOut.turbo;
+		int autoLocked = m_carParamOut.autonomousLocked ;
 		int mode = m_carParamOut.mode;
 
 		uint16_t speed = 0;
 		if (mode == ACM_MODE_MANUAL)
 		{
-			if (is_moving && !auto_locked)
-			{
-				speed = is_turbo ? 2 : 1;
-			}
+			if (isMoving && !autoLocked)
+				speed = isTurbo ? 2 : 1;
 		}
 		else if (mode == ACM_MODE_AUTONOMOUS)
 		{
-			if (!auto_locked)
+			if (!autoLocked)
 				speed = 1;
 		}
 
@@ -316,10 +348,16 @@ void Application::canOnTimeToSend()
 
 		i = 0;
 	}
+
+	auto timeend = std::chrono::steady_clock::now();
+	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
+	m_timeLogger.write("canOnTimeToSend : ", execduration);
 }
 
 void Application::canOnDataReceived(int fd, uint32_t events)
 {
+	auto timestart = std::chrono::steady_clock::now();
+
 	int nbytes;
 	struct can_frame frame;
 
@@ -338,7 +376,7 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 		exit(1);
 	}
 
-	uint8_t obst_detection;
+	uint8_t obstDetection;
 	uint8_t speed;
 	uint8_t dir;
 	uint8_t bat;
@@ -352,11 +390,11 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 
 		m_obstacleDetector.detect(us, obst);
 
-		obst_detection = (((obst[0].detected or obst[1].detected) ? 0x01 : 0x00) << 2) |
-						 (((obst[2].detected or obst[3].detected) ? 0x01 : 0x00) << 1) |
-						 (((obst[4].detected or obst[5].detected) ? 0x01 : 0x00) << 0);
+		obstDetection = (((obst[0].detected or obst[1].detected) ? 0x01 : 0x00) << 2) |
+						(((obst[2].detected or obst[3].detected) ? 0x01 : 0x00) << 1) |
+						(((obst[4].detected or obst[5].detected) ? 0x01 : 0x00) << 0);
 
-		m_carParamIn.obst = obst_detection;
+		m_carParamIn.obst = obstDetection;
 		memcpy(m_carParamIn.obstacles, obst, sizeof(m_carParamIn.obstacles));
 
 		//printf("RECEIVED: %d\n", m_carParamIn.obstacles[1].dist);
@@ -380,19 +418,23 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 
 	uint8_t buf[2] = {0x00, 0x00};
 
-	obst_detection = m_carParamIn.obst;
+	obstDetection = m_carParamIn.obst;
 	speed = m_carParamIn.speed;
 	dir = m_carParamIn.dir;
 	bat = m_carParamIn.bat;
 	mode = m_carParamOut.mode;
 
 	buf[0] = ((speed & 0x07) << 3) | ((dir & 0x03) << 1) | ((mode & 0x01) << 0);
-	buf[1] = ((0x00) << 4) | ((obst_detection) << 2) | ((bat & 0x03) << 0);
+	buf[1] = ((0x00) << 4) | ((obstDetection) << 2) | ((bat & 0x03) << 0);
 
 	// TODO: GattServer::sendNotification
 	bt_gatt_server_send_notification(m_gattServer.m_gatt_server, handle, buf, sizeof(buf));
 
 	m_csvLogger.generate_csv(m_carParamOut, m_carParamIn);
+
+	auto timeend = std::chrono::steady_clock::now();
+	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
+	m_timeLogger.write("canOnDataReceived : ", execduration);
 }
 
 void Application::bleOnTimeToSend(void* user_data)
@@ -404,6 +446,8 @@ void Application::bleOnDataReceived(struct gatt_db_attribute *attrib,
 		unsigned int id, uint16_t offset, const uint8_t *value, size_t len,
 		uint8_t opcode, struct bt_att *att)
 {
+	auto timestart = std::chrono::steady_clock::now();
+
 	int current_state = value[0] >> 5;
 	int current_dir = value[0] & 0x7;
 
@@ -453,6 +497,10 @@ void Application::bleOnDataReceived(struct gatt_db_attribute *attrib,
 		m_carParamOut.turbo = false;
 		break;
 	}
+
+	auto timeend = std::chrono::steady_clock::now();
+	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
+	m_timeLogger.write("bleOnDataReceived : ", execduration);
 }
 
 }  // namespace acm
