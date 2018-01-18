@@ -22,11 +22,12 @@ enum AcmMode : uint8_t
 	ACM_MODE_AUTONOMOUS 	= 1
 };
 
+
 struct CarParamOut
 {
 	CarParamOut()
 	{
-		dir = 2;
+		dir = 0;
 		sonar = 0;
 		new_mode = ACM_MODE_MANUAL;
 		mode = ACM_MODE_MANUAL;
