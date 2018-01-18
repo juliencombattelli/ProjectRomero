@@ -62,12 +62,12 @@ public:
 
 	inline static const std::map<UsSensorId, UsSensorData> usSensorParams
 	{
-		{UsSensorId_FrontLeft,		{80, 100,	SPEED_THRESHOLD_NORMAL_TURBO}},
-		{UsSensorId_FrontRight,		{80, 100,	SPEED_THRESHOLD_NORMAL_TURBO}},
+		{UsSensorId_FrontLeft,		{40, 80,	SPEED_THRESHOLD_NORMAL_TURBO}},
+		{UsSensorId_FrontRight,		{40, 80,	SPEED_THRESHOLD_NORMAL_TURBO}},
 		{UsSensorId_FrontSideLeft, 	{20, 40,	SPEED_THRESHOLD_NORMAL_TURBO}},
 		{UsSensorId_FrontSideRight, {20, 40,	SPEED_THRESHOLD_NORMAL_TURBO}},
-		{UsSensorId_SideLeft, 		{40, 60,	SPEED_THRESHOLD_NORMAL_TURBO}},
-		{UsSensorId_SideRight, 		{40, 60,	SPEED_THRESHOLD_NORMAL_TURBO}}
+		{UsSensorId_SideLeft, 		{5,  10,	SPEED_THRESHOLD_NORMAL_TURBO}},
+		{UsSensorId_SideRight, 		{5,  10,	SPEED_THRESHOLD_NORMAL_TURBO}}
 	};
 
 	Application(const std::string& timeFilename, const std::string& csvFilename) :
@@ -85,6 +85,7 @@ private:
 	///////////////////////////////////////////////////////////////////////////
 	void signalCallback(int signum);
 	void autonomousControl();
+	void systemControl();
 	void cameraProcess();
 	void canOnTimeToSend();
 	void canOnDataReceived(int fd, uint32_t events);

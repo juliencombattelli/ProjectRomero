@@ -155,7 +155,7 @@ int Application::run()
 			[](void *user_data)
 			{
 				acm::Application* self = (decltype(self))(user_data);
-				self->autonomousControl();
+				self->systemControl();
 			},
 			this);
 
@@ -224,7 +224,7 @@ void Application::autonomousControl()
 {
 	//auto timestart = std::chrono::steady_clock::now();
 
-	static int stopPrev = 0; // avoid changing value every iteration
+	/*static int stopPrev = 0; // avoid changing value every iteration
 
 	obstacle obstacles[6];
 
@@ -266,18 +266,145 @@ void Application::autonomousControl()
 		m_carParamOut.autonomousLocked = stop;
 	}
 
-	if(stop == 1 and m_carParamOut.mode == ACM_MODE_MANUAL)
-	{
+	stopPrev = stop;*/
 
-	}
-
-	stopPrev = stop;
 
 	/*
 	auto timeend = std::chrono::steady_clock::now();
 	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
 	m_timeLogger.write("autonomousControl : ", execduration);
 	*/
+}
+
+void Application::systemControl()
+{
+	int obstacleDistance = 128; // TODO: magic number, max distance of us sensors
+	int obstacleDistanceClose = 0;
+	int obstacleDistanceCritical = 0;
+
+	/*for(const auto& [usId, usParam] : usSensorParams)
+	{
+		if(obstacles[usId].detected)
+		{
+			if((obstacles[usId].dist <= usParam.detectionDistanceNormal_cm
+					and carSpeed <= usParam.speedThresholdNormalTurbo_dmps)
+				or (obstacles[usId].dist <= usParam.detectionDistanceTurbo_cm
+					and carSpeed >  usParam.speedThresholdNormalTurbo_dmps))
+			{
+				obstacleDetected = true;
+				break;
+			}
+		}
+	}*/
+
+	for (const auto& [usId, usParam] : usSensorParams)
+	{
+		if(m_carParamIn.obstacles[usId].detected)
+		{
+			// Find smaller distance
+			if(m_carParamIn.obstacles[usId].dist < obstacleDistance)
+			{
+				obstacleDistance = m_carParamIn.obstacles[usId].dist;
+				obstacleDistanceClose = usParam.detectionDistanceTurbo_cm;
+				obstacleDistanceCritical = usParam.detectionDistanceNormal_cm;
+			}
+		}
+	}
+
+	// Update FSM mode
+	switch(m_carParamOut.mode)
+	{
+	case AcmMode_t::autonomous:
+		if(m_carParamOut.requestedMode == AcmMode_t::manual
+				and obstacleDistance > obstacleDistanceClose
+				and (m_carParamIn.roadDetection != RoadDetection_t::leftcrit or m_carParamIn.roadDetection != RoadDetection_t::rightcrit))
+		{
+			m_carParamOut.mode = AcmMode_t::manual;
+		}
+		else if(obstacleDistance <= obstacleDistanceClose)
+		{
+			m_carParamOut.mode = AcmMode_t::obstAvoiding;
+		}
+		break;
+	case AcmMode_t::manual:
+		if(obstacleDistance > obstacleDistanceClose
+				and (( m_carParamOut.requestedMode == AcmMode_t::autonomous)
+						or
+					 (m_carParamIn.roadDetection == RoadDetection_t::leftcrit or m_carParamIn.roadDetection == RoadDetection_t::rightcrit)))
+		{
+			m_carParamOut.mode = AcmMode_t::autonomous;
+		}
+		else if(obstacleDistance <= obstacleDistanceClose)
+		{
+			m_carParamOut.mode = AcmMode_t::obstAvoiding;
+		}
+		break;
+	case AcmMode_t::obstAvoiding:
+		if(obstacleDistance <= obstacleDistanceCritical or m_carParamIn.roadDetection == RoadDetection_t::leftcrit or m_carParamIn.roadDetection == RoadDetection_t::rightcrit)
+		{
+			m_carParamOut.mode = AcmMode_t::emergencyStop;
+		}
+		else if(obstacleDistance > obstacleDistanceClose)
+		{
+			m_carParamOut.mode = AcmMode_t::manual;
+		}
+		break;
+	case AcmMode_t::emergencyStop:
+		if(obstacleDistance > obstacleDistanceCritical and not (m_carParamIn.roadDetection == RoadDetection_t::leftcrit or m_carParamIn.roadDetection == RoadDetection_t::rightcrit))
+		{
+			m_carParamOut.mode = AcmMode_t::obstAvoiding;
+		}
+		else if(obstacleDistance > obstacleDistanceClose and (m_carParamIn.roadDetection == RoadDetection_t::leftcrit or m_carParamIn.roadDetection == RoadDetection_t::rightcrit))
+		{
+			m_carParamOut.mode = AcmMode_t::autonomous;
+		}
+		break;
+	}
+
+	// Execute FSM actions
+	switch(m_carParamOut.mode)
+	{
+	case AcmMode_t::autonomous:
+		m_carParamOut.turbo = false;
+		m_carParamOut.speed = Speed_t::normal; // TODO: magic number
+		if (m_carParamIn.roadDetection == RoadDetection_t::left)
+			m_carParamOut.dir = Direction_t::right;
+		else if (m_carParamIn.roadDetection == RoadDetection_t::right)
+			m_carParamOut.dir = Direction_t::left;
+		else if (m_carParamIn.roadDetection == RoadDetection_t::leftcrit)
+			m_carParamOut.dir = Direction_t::rightCrit;
+		else if (m_carParamIn.roadDetection == RoadDetection_t::rightcrit)
+			m_carParamOut.dir = Direction_t::leftCrit;
+		else
+			m_carParamOut.dir = Direction_t::middle;
+		break;
+	case AcmMode_t::manual:
+		m_carParamOut.turbo = m_carParamOut.requestedTurbo;
+		m_carParamOut.speed = m_carParamOut.turbo ? Speed_t::turbo : Speed_t::normal;
+		m_carParamOut.dir = m_carParamIn.dir;
+		break;
+	case AcmMode_t::obstAvoiding:
+		m_carParamOut.turbo = false;
+		m_carParamOut.speed = Speed_t::normal;
+		m_carParamOut.dir = m_carParamIn.dir;
+		break;
+	case AcmMode_t::emergencyStop:
+		m_carParamOut.speed = Speed_t::stop;
+		m_carParamOut.dir = Direction_t::middle;
+		break;
+	}
+
+	std::ofstream log("fsm.log", std::ofstream::out | std::ofstream::app);
+	if(log)
+	{
+		log << "     mode:" << (int)m_carParamOut.mode
+			<< "    rmode:" << (int)m_carParamOut.requestedMode
+			<< "     road:" << (int)m_carParamIn.roadDetection
+			<< "     obst:" << obstacleDistance
+			<< "    close:" << obstacleDistanceClose
+			<< "     crit:" << obstacleDistanceCritical
+			<< std::endl;
+	}
 }
 
 void Application::canOnTimeToSend()
@@ -289,36 +416,36 @@ void Application::canOnTimeToSend()
 	//Multiply the period by 2
 	if (i == 0)
 	{
-		Direction_t dir = m_carParamOut.dir;
-		int mode = m_carParamOut.mode;
+		/*Direction_t dir = m_carParamOut.dir;
+		AcmMode_t mode = m_carParamOut.mode;
 
-		if(mode == ACM_MODE_AUTONOMOUS)
-			dir = Direction_t::middle;
+		if(mode == AcmMode_t::autonomous)
+			dir = Direction_t::middle;*/
 
-		m_canController.sendMessage(CanId_DirectionCmd, (uint8_t*)&dir);
+		m_canController.sendMessage(CanId_DirectionCmd, (uint8_t*)&m_carParamOut.dir);
 
 		i = 1;
 	}
 	else if (i == 1)
 	{
-		int isMoving = m_carParamOut.moving;
+		/*int isMoving = m_carParamOut.moving;
 		int isTurbo = m_carParamOut.turbo;
 		int autoLocked = m_carParamOut.autonomousLocked ;
-		int mode = m_carParamOut.mode;
+		AcmMode_t mode = m_carParamOut.mode;
 
 		uint16_t speed = 0;
-		if (mode == ACM_MODE_MANUAL)
+		if (mode == AcmMode_t::manual)
 		{
 			if (isMoving && !autoLocked)
 				speed = isTurbo ? 2 : 1;
 		}
-		else if (mode == ACM_MODE_AUTONOMOUS)
+		else if (mode == AcmMode_t::autonomous)
 		{
 			if (!autoLocked)
 				speed = 1;
-		}
+		}*/
 
-		m_canController.sendMessage(CanId_SpeedCmd, (uint8_t*)&speed);
+		m_canController.sendMessage(CanId_SpeedCmd, (uint8_t*)&m_carParamOut.speed);
 
 		i = 0;
 	}
@@ -355,7 +482,7 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 	uint8_t speed;
 	Direction_t dir;
 	uint8_t bat;
-	uint8_t mode;
+	AcmMode_t mode;
 
 	if (frame.can_id == CanId_UltrasoundData)
 	{
@@ -378,11 +505,11 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 	{
 		speed = frame.data[0] / 10;
 
-		m_carParamIn.speed = speed;
+		m_carParamIn.speedMeasure = speed;
 	}
 	if (frame.can_id == CanId_DirectionData)
 	{
-		m_carParamIn.dir = m_carParamIn.speed == 0 ? Direction_t::left : (Direction_t)frame.data[0];
+		m_carParamIn.dir = m_carParamIn.speedMeasure == 0 ? Direction_t::left : (Direction_t)frame.data[0];
 	}
 	if (frame.can_id == CanId_BatteryData)
 	{
@@ -394,12 +521,17 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 	uint8_t buf[2] = {0x00, 0x00};
 
 	obstDetection = m_carParamIn.obst;
-	speed = m_carParamIn.speed;
+	speed = m_carParamIn.speedMeasure;
 	dir = m_carParamIn.dir;
 	bat = m_carParamIn.bat;
 	mode = m_carParamOut.mode;
 
-	buf[0] = ((speed & 0x07) << 3) | (((uint8_t)dir & 0x03) << 1) | ((mode & 0x01) << 0);
+	if(mode == AcmMode_t::emergencyStop)
+		mode = AcmMode_t::autonomous;
+	if(mode == AcmMode_t::obstAvoiding)
+		mode = AcmMode_t::manual;
+
+	buf[0] = ((speed & 0x07) << 3) | (((uint8_t)dir & 0x03) << 1) | (((uint8_t)mode & 0x01) << 0);
 	buf[1] = ((0x00) << 4) | ((obstDetection) << 2) | ((bat & 0x03) << 0);
 
 	// TODO: GattServer::sendNotification
@@ -427,50 +559,50 @@ void Application::bleOnDataReceived(struct gatt_db_attribute *attrib,
 	int current_state = value[0] >> 5;
 	Direction_t current_dir = (Direction_t)(value[0] & 0x7);
 
-	m_carParamOut.dir = current_dir;
+	m_carParamOut.requestedDir = current_dir;
 	switch (current_state)
 	{
 	case 0:
 		m_carParamOut.idle = false;
-		m_carParamOut.requestedMode = false;
+		m_carParamOut.requestedMode = AcmMode_t::manual;
 		m_carParamOut.moving = false;
-		m_carParamOut.turbo = false;
+		m_carParamOut.requestedTurbo = false;
 		break;
 	case 1:
 		m_carParamOut.idle = true;
-		m_carParamOut.requestedMode = false;
+		m_carParamOut.requestedMode = AcmMode_t::manual;
 		m_carParamOut.moving = false;
-		m_carParamOut.turbo = false;
+		m_carParamOut.requestedTurbo = false;
 		break;
 	case 2:
 		m_carParamOut.idle = true;
-		m_carParamOut.requestedMode = false;
+		m_carParamOut.requestedMode = AcmMode_t::manual;
 		m_carParamOut.moving = true;
-		m_carParamOut.turbo = false;
+		m_carParamOut.requestedTurbo = false;
 		break;
 	case 3:
 		m_carParamOut.idle = true;
-		m_carParamOut.requestedMode = false;
+		m_carParamOut.requestedMode = AcmMode_t::manual;
 		m_carParamOut.moving = false;
-		m_carParamOut.turbo = true;
+		m_carParamOut.requestedTurbo = true;
 		break;
 	case 4:
 		m_carParamOut.idle = true;
-		m_carParamOut.requestedMode = false;
+		m_carParamOut.requestedMode = AcmMode_t::manual;
 		m_carParamOut.moving = true;
-		m_carParamOut.turbo = true;
+		m_carParamOut.requestedTurbo = true;
 		break;
 	case 5:
 		m_carParamOut.idle = false;
-		m_carParamOut.requestedMode = true;
+		m_carParamOut.requestedMode = AcmMode_t::autonomous;
 		m_carParamOut.moving = false;
-		m_carParamOut.turbo = false;
+		m_carParamOut.requestedTurbo = false;
 		break;
 	case 6:
 		m_carParamOut.idle = true;
-		m_carParamOut.requestedMode = true;
+		m_carParamOut.requestedMode = AcmMode_t::autonomous;
 		m_carParamOut.moving = false;
-		m_carParamOut.turbo = false;
+		m_carParamOut.requestedTurbo = false;
 		break;
 	}
 /*

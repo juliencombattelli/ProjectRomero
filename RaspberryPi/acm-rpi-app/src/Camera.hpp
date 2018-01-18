@@ -82,7 +82,7 @@ public:
 
 		const int low = surface * 0.25;
 		const int critical = surface * 0.35;
-		const int filled = surface * 0.7;
+		const int filled = surface * 0.6;
 		//const int side = surface * 0.6;
 
 		int l = countLeft(img);
