@@ -34,7 +34,7 @@
 --------------------------------------------*/
 
 char text[17];
-
+uint8_t vit;
 unsigned int val_Tx = 0, val_Rx = 0;  /* Globals used for display */
 char trame[8];
 char SpeedRx[1];
@@ -192,10 +192,10 @@ void canPeriodic (void) {
 	Prev_SR  = SR;	
 	
 	CAN_TxMsg.id = CAN_ID_ULTRASOUND;                /* initialize msg to send   */  
-  for (i = 0; i < 8; i++) CAN_TxMsg.data[i] = 0;
-  CAN_TxMsg.len = 8;
-  CAN_TxMsg.format = STANDARD_FORMAT;
-  CAN_TxMsg.type = DATA_FRAME;	
+    for (i = 0; i < 8; i++) CAN_TxMsg.data[i] = 0;
+    CAN_TxMsg.len = 8;
+    CAN_TxMsg.format = STANDARD_FORMAT;
+    CAN_TxMsg.type = DATA_FRAME;	
 	
 	create_ultrasound_frame(VAL_ULTRA, trame);
 	CAN_waitReady ();
@@ -216,11 +216,19 @@ void canPeriodic (void) {
 			//direction detection
 			angle_direction = Direction_get() ;				
 
-			if(angle_direction<=117) {
+			if(angle_direction<=110) {
 				VAL_POTEN.potentiometer.num_potentiometer = 2;
-			} else if(angle_direction<=138) {
+			} 
+			else if (angle_direction<= 122) {
+				VAL_POTEN.potentiometer.num_potentiometer = 4;
+			}
+			else if(angle_direction<=132) {
 				VAL_POTEN.potentiometer.num_potentiometer = 0;
-			} else if(angle_direction<=170) {
+			} 
+			else if(angle_direction<=146) {
+				VAL_POTEN.potentiometer.num_potentiometer = 3;
+			} 
+			else {
 				VAL_POTEN.potentiometer.num_potentiometer = 1;
 			}
 
@@ -285,7 +293,6 @@ void canPeriodic (void) {
 			break;
 	}		
 	
-	
 	// stop the car if no command messages received during the last 200 millisecond
 	if (nb_rcv == 0){
 			SpeedRx[0] = 0;
@@ -339,14 +346,14 @@ uint8_t angle;
 
 		
 int main (void)  {
-  SysTick_Config(SystemCoreClock / 1000);         /* SysTick 1 msec IRQ       */
+    SysTick_Config(SystemCoreClock / 1000);         /* SysTick 1 msec IRQ       */
 
 	Manager_Init();
 	Motor_QuickInit(REAR_MOTOR_L);
 	Motor_QuickInit(REAR_MOTOR_R);
 	Motor_Enable(REAR_MOTOR_L);
 	Motor_Enable(REAR_MOTOR_R);	
-  can_Init ();                                    /* initialize CAN interface */
+    can_Init ();                                    /* initialize CAN interface */
 	
 	FSL = US_CalcDistance(0);
 	FL  = US_CalcDistance(1);
@@ -358,12 +365,13 @@ int main (void)  {
 	SpeedRx[0] = 0;
 	DirRx[0] = 0;
 	
-  Timer_1234_Init (TIM2, 200000);								  /* set Timer 2 every 200ms */
+    Timer_1234_Init (TIM2, 100000);								  /* set Timer 2 every 200ms */
 	Timer_Active_IT(TIM2, 0, canPeriodic);					/* Active Timer2 IT					*/
 	
   while (1) {
-		angle = Direction_get() ;				
-		
+		//angle = Direction_get() ;					
+		vit = (uint8_t)((SpeedSensor_get(SPEED_CM_S,SENSOR_L)+SpeedSensor_get(SPEED_CM_S,SENSOR_R))/2.0) ;
+	
 		if (CAN_RxRdy) {                              //rx msg on CAN Ctrl 
 			nb_rcv ++;
 			CAN_RxRdy = 0;
@@ -384,23 +392,23 @@ int main (void)  {
 		else if (SpeedRx[0] == 1)
 		{
 			
-			Motor_setSpeed(REAR_MOTOR_L, 0.5); //Default speed
-			Motor_setSpeed(REAR_MOTOR_R, 0.5);				
+			Motor_setSpeed(REAR_MOTOR_L, 0.35); //Default speed
+			Motor_setSpeed(REAR_MOTOR_R, 0.35);				
 		}
 		else if (SpeedRx[0] == 2)
 		{
 			
-			Motor_setSpeed(REAR_MOTOR_L, 1); //Turbo speed
-			Motor_setSpeed(REAR_MOTOR_R, 1);
+			Motor_setSpeed(REAR_MOTOR_L, 0.5); //Turbo speed
+			Motor_setSpeed(REAR_MOTOR_R, 0.5);
 		} 
 
 		//Dir_Cmd(DirRx, angle);		
 		
 		if (DirRx[0] == 0) //Position centrale des roues 127
 		{
-			if (angle <= 124 || angle >= 130){
+			if (angle <= 125 || angle >= 135){
 				//Motor_Enable(FRONT_MOTOR);
-				Turn(127);
+				Turn(130);
 			}			
 		}  
 		else if (DirRx[0] == 1) //Position à extrême gauche des roues 155
@@ -419,14 +427,14 @@ int main (void)  {
 		}	
 		else if (DirRx[0] == 3) //Position à gauche des roues 141
 		{
-			if (angle <= 138 || angle >= 144){
+			if (angle <= 136 || angle >= 146){
 				//Motor_Enable(FRONT_MOTOR);
 				Turn(141);
 			}			
 		}
 		else if (DirRx[0] == 4) //Position à droite des roues 117
 		{
-			if (angle <= 114 || angle >= 120){
+			if (angle <= 112 || angle >= 122){
 				//Motor_Enable(FRONT_MOTOR);
 				Turn(117);
 			}
