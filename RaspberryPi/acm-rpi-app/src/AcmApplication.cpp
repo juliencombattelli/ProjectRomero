@@ -9,6 +9,7 @@
 #include "common-defs.h"
 #include "Camera.hpp"
 #include "utils/Timing.hpp"
+#include <chrono>
 
 namespace acm
 {
@@ -161,8 +162,8 @@ int Application::run()
 	/*
 	 * Initialize timer to periodically process camera frame
 	 */
-	m_timerAutonomousProcess.setDuration(CAMERA_PROCESS_PERIOD_MS);
-	m_timerAutonomousProcess.mainloopAttach(
+	m_timerCameraProcess.setDuration(CAMERA_PROCESS_PERIOD_MS);
+	m_timerCameraProcess.mainloopAttach(
 			[](void *user_data)
 			{
 				acm::Application* self = (decltype(self))(user_data);
@@ -204,24 +205,24 @@ void Application::signalCallback(int signum)
 	}
 
 	auto timeend = std::chrono::steady_clock::now();
-	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
+	double execduration =  std::chrono::duration<double, std::milli>(timeend-timestart).count();
 	m_timeLogger.write("signalCallback : ", execduration);
 }
 
 void Application::cameraProcess()
 {
-	auto timestart = std::chrono::steady_clock::now();
 
 	m_carParamIn.roadDetection = m_camera.process();
 
+	/*auto timestart = std::chrono::steady_clock::now();
 	auto timeend = std::chrono::steady_clock::now();
 	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
-	m_timeLogger.write("cameraProcess : ", execduration);
+	m_timeLogger.write("cameraProcess : ", execduration);*/
 }
 
 void Application::autonomousControl()
 {
-	auto timestart = std::chrono::steady_clock::now();
+	//auto timestart = std::chrono::steady_clock::now();
 
 	static int stopPrev = 0; // avoid changing value every iteration
 
@@ -252,42 +253,8 @@ void Application::autonomousControl()
 		}
 	}
 
-	/*for (int it = 0; it < 6; it++)
-	{
-		// distance TBD //static and speed= 1.5 //mobile and speed= 3
-		if(obstacles[it].detected == 1)
-		{
-			if(it == 2 or it == 3)
-			{
-				if((obstacles[it].dist <= 100 && car_speed <= SPEED_THRESHOLD_NORMAL_TURBO) ||
-				   (obstacles[it].dist <= 140 && car_speed > SPEED_THRESHOLD_NORMAL_TURBO))
-				{
-					stop = 1;
-					break;
-				}
-			}
-			if(it == 0 or it == 4)
-			{
-				if((obstacles[it].dist <= 20 && car_speed <= SPEED_THRESHOLD_NORMAL_TURBO) ||
-				   (obstacles[it].dist <= 40 && car_speed > SPEED_THRESHOLD_NORMAL_TURBO))
-				{
-					stop = 1;
-					break;
-				}
-			}
-			else
-			{
-				if((obstacles[it].dist <= 40 && car_speed <= SPEED_THRESHOLD_NORMAL_TURBO) ||
-				   (obstacles[it].dist <= 60 && car_speed > SPEED_THRESHOLD_NORMAL_TURBO))
-				{
-					stop = 1;
-					break;
-				}
-			}
-		}
-	}*/
-
 	//road_detection ; stop if critic
+
 	if(roadDetection == RoadDetection_t::rightcrit or roadDetection == RoadDetection_t::leftcrit)
 	{
 		stop=1 ;
@@ -299,27 +266,34 @@ void Application::autonomousControl()
 		m_carParamOut.autonomousLocked = stop;
 	}
 
+	if(stop == 1 and m_carParamOut.mode == ACM_MODE_MANUAL)
+	{
+
+	}
+
 	stopPrev = stop;
 
+	/*
 	auto timeend = std::chrono::steady_clock::now();
 	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
 	m_timeLogger.write("autonomousControl : ", execduration);
+	*/
 }
 
 void Application::canOnTimeToSend()
 {
-	auto timestart = std::chrono::steady_clock::now();
+	//auto timestart = std::chrono::steady_clock::now();
 
 	static int i = 0;
 
 	//Multiply the period by 2
 	if (i == 0)
 	{
-		int dir = m_carParamOut.dir;
+		Direction_t dir = m_carParamOut.dir;
 		int mode = m_carParamOut.mode;
 
 		if(mode == ACM_MODE_AUTONOMOUS)
-			dir=2 ;
+			dir = Direction_t::middle;
 
 		m_canController.sendMessage(CanId_DirectionCmd, (uint8_t*)&dir);
 
@@ -348,15 +322,16 @@ void Application::canOnTimeToSend()
 
 		i = 0;
 	}
-
+/*
 	auto timeend = std::chrono::steady_clock::now();
 	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
 	m_timeLogger.write("canOnTimeToSend : ", execduration);
+*/
 }
 
 void Application::canOnDataReceived(int fd, uint32_t events)
 {
-	auto timestart = std::chrono::steady_clock::now();
+	//auto timestart = std::chrono::steady_clock::now();
 
 	int nbytes;
 	struct can_frame frame;
@@ -378,7 +353,7 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 
 	uint8_t obstDetection;
 	uint8_t speed;
-	uint8_t dir;
+	Direction_t dir;
 	uint8_t bat;
 	uint8_t mode;
 
@@ -407,7 +382,7 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 	}
 	if (frame.can_id == CanId_DirectionData)
 	{
-		m_carParamIn.dir = m_carParamIn.speed == 0 ? 3 : frame.data[0];
+		m_carParamIn.dir = m_carParamIn.speed == 0 ? Direction_t::left : (Direction_t)frame.data[0];
 	}
 	if (frame.can_id == CanId_BatteryData)
 	{
@@ -424,17 +399,18 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 	bat = m_carParamIn.bat;
 	mode = m_carParamOut.mode;
 
-	buf[0] = ((speed & 0x07) << 3) | ((dir & 0x03) << 1) | ((mode & 0x01) << 0);
+	buf[0] = ((speed & 0x07) << 3) | (((uint8_t)dir & 0x03) << 1) | ((mode & 0x01) << 0);
 	buf[1] = ((0x00) << 4) | ((obstDetection) << 2) | ((bat & 0x03) << 0);
 
 	// TODO: GattServer::sendNotification
 	bt_gatt_server_send_notification(m_gattServer.m_gatt_server, handle, buf, sizeof(buf));
 
 	m_csvLogger.generate_csv(m_carParamOut, m_carParamIn);
-
+/*
 	auto timeend = std::chrono::steady_clock::now();
 	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
 	m_timeLogger.write("canOnDataReceived : ", execduration);
+*/
 }
 
 void Application::bleOnTimeToSend(void* user_data)
@@ -446,61 +422,62 @@ void Application::bleOnDataReceived(struct gatt_db_attribute *attrib,
 		unsigned int id, uint16_t offset, const uint8_t *value, size_t len,
 		uint8_t opcode, struct bt_att *att)
 {
-	auto timestart = std::chrono::steady_clock::now();
+	//auto timestart = std::chrono::steady_clock::now();
 
 	int current_state = value[0] >> 5;
-	int current_dir = value[0] & 0x7;
+	Direction_t current_dir = (Direction_t)(value[0] & 0x7);
 
 	m_carParamOut.dir = current_dir;
 	switch (current_state)
 	{
 	case 0:
 		m_carParamOut.idle = false;
-		m_carParamOut.mode = false;
+		m_carParamOut.requestedMode = false;
 		m_carParamOut.moving = false;
 		m_carParamOut.turbo = false;
 		break;
 	case 1:
 		m_carParamOut.idle = true;
-		m_carParamOut.mode = false;
+		m_carParamOut.requestedMode = false;
 		m_carParamOut.moving = false;
 		m_carParamOut.turbo = false;
 		break;
 	case 2:
 		m_carParamOut.idle = true;
-		m_carParamOut.mode = false;
+		m_carParamOut.requestedMode = false;
 		m_carParamOut.moving = true;
 		m_carParamOut.turbo = false;
 		break;
 	case 3:
 		m_carParamOut.idle = true;
-		m_carParamOut.mode = false;
+		m_carParamOut.requestedMode = false;
 		m_carParamOut.moving = false;
 		m_carParamOut.turbo = true;
 		break;
 	case 4:
 		m_carParamOut.idle = true;
-		m_carParamOut.mode = false;
+		m_carParamOut.requestedMode = false;
 		m_carParamOut.moving = true;
 		m_carParamOut.turbo = true;
 		break;
 	case 5:
 		m_carParamOut.idle = false;
-		m_carParamOut.mode = true;
+		m_carParamOut.requestedMode = true;
 		m_carParamOut.moving = false;
 		m_carParamOut.turbo = false;
 		break;
 	case 6:
 		m_carParamOut.idle = true;
-		m_carParamOut.mode = true;
+		m_carParamOut.requestedMode = true;
 		m_carParamOut.moving = false;
 		m_carParamOut.turbo = false;
 		break;
 	}
-
+/*
 	auto timeend = std::chrono::steady_clock::now();
 	double execduration =  std::chrono::duration <double, std::milli>(timeend-timestart).count();
 	m_timeLogger.write("bleOnDataReceived : ", execduration);
+*/
 }
 
 }  // namespace acm
