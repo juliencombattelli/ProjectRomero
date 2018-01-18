@@ -154,6 +154,8 @@ public:
 		hue = val[0];
 
 		inRange(hue, 60, 255, hue);
+
+
 		return placement(hue);
 	}
 

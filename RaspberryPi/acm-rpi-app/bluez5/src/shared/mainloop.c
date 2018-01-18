@@ -121,6 +121,13 @@ static void signal_callback(int fd, uint32_t events, void *user_data)
 		data->callback(si.ssi_signo, data->user_data);
 }
 
+static double TimeSpecToMilliSeconds(struct timespec* ts)
+{
+    return (double)ts->tv_sec*1000.0 + (double)ts->tv_nsec / 1000000.0;
+}
+
+FILE* file;
+
 int mainloop_run(void)
 {
 	unsigned int i;
@@ -144,19 +151,37 @@ int mainloop_run(void)
 	exit_status = EXIT_SUCCESS;
 
 	while (!epoll_terminate) {
+
+	    struct timespec start;
+	    struct timespec end;
+	    double elapsedMilliSeconds;
+	    if(clock_gettime(CLOCK_MONOTONIC, &start))
+	    { /* handle error */ }
+
 		struct epoll_event events[MAX_EPOLL_EVENTS];
 		int n, nfds;
 
 		nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, 100);
-		if (nfds < 0)
-			continue;
+		if (nfds >= 0) {
+			for (n = 0; n < nfds; n++) {
+				struct mainloop_data *data = events[n].data.ptr;
 
-		for (n = 0; n < nfds; n++) {
-			struct mainloop_data *data = events[n].data.ptr;
-
-			data->callback(data->fd, events[n].events,
-							data->user_data);
+				data->callback(data->fd, events[n].events,
+								data->user_data);
+			}
 		}
+
+		if(clock_gettime(CLOCK_MONOTONIC, &end))
+		{ /* handle error */ }
+		elapsedMilliSeconds = TimeSpecToMilliSeconds(&end) - TimeSpecToMilliSeconds(&start);
+		file = fopen("interprocessTiming.log","a");
+		if(file == NULL)
+		{
+			printf("Failed to open interprocessTiming.log\r\n");
+			fclose(file);
+		}
+		fprintf(file,"%lf ms\r\n",elapsedMilliSeconds);
+		fclose(file);
 	}
 
 	if (signal_data) {

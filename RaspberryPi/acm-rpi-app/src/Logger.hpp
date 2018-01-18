@@ -32,7 +32,7 @@ public:
 	{
 		uint8_t speed;
 		speed = m_carParamIn.speed * 0.36; // Speed conversion from dm/s to km/h
-		fprintf(m_file, "%d;%d;%d;%d;", m_carParamOut.mode, speed, m_carParamIn.dir, (int)m_carParamIn.roadDetection);
+		fprintf(m_file, "%d;%d;%d;%d;", m_carParamOut.mode, speed, (int)m_carParamIn.dir, (int)m_carParamIn.roadDetection);
 		for (int i = 0; i < 6; i++)
 		{
 			fprintf(m_file, "%d;%d;%d;", m_carParamIn.obstacles[i].detected,
