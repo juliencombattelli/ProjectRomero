@@ -10,6 +10,7 @@ IMAGE_FEATURES_append = " \
 
 # Add some packages
 IMAGE_INSTALL_append =  " \
+	htop \
 	nano \
 	bluez5 \
 	bluez5-dev \
@@ -19,6 +20,13 @@ IMAGE_INSTALL_append =  " \
 	canutils \
 	libsocketcan \
 	spitools \
+	git \
+	cmake \
+	opencv \
+	opencv-dev \
+	gstreamer1.0 \
+	v4l-utils \
+	v4l-utils-dev \
+	libjpeg-turbo \
+	libjpeg-turbo-dev \
 "
-
-KERNEL_MODULE_AUTOLOAD += "mcp251x"
