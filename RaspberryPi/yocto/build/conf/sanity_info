@@ -1,0 +1,4 @@
+SANITY_VERSION 1
+TMPDIR /home/jucom/Development/yocto/rocko/build/tmp
+SSTATE_DIR /home/jucom/Development/yocto/rocko/build/sstate-cache
+NATIVELSBSTRING ubuntu-17.10
