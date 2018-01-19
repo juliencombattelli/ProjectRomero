@@ -380,13 +380,19 @@ void Application::systemControl()
 		break;
 	case AcmMode_t::manual:
 		m_carParamOut.turbo = m_carParamOut.requestedTurbo;
-		m_carParamOut.speed = m_carParamOut.turbo ? Speed_t::turbo : Speed_t::normal;
-		m_carParamOut.dir = m_carParamIn.dir;
+		if(m_carParamOut.moving)
+			m_carParamOut.speed = m_carParamOut.turbo ? Speed_t::turbo : Speed_t::normal;
+		else
+			m_carParamOut.speed = Speed_t::stop;
+		m_carParamOut.dir = m_carParamOut.requestedDir;
 		break;
 	case AcmMode_t::obstAvoiding:
 		m_carParamOut.turbo = false;
-		m_carParamOut.speed = Speed_t::normal;
-		m_carParamOut.dir = m_carParamIn.dir;
+		if(m_carParamOut.moving)
+			m_carParamOut.speed = Speed_t::normal;
+		else
+			m_carParamOut.speed = Speed_t::stop;
+		m_carParamOut.dir = m_carParamOut.requestedDir;
 		break;
 	case AcmMode_t::emergencyStop:
 		m_carParamOut.speed = Speed_t::stop;
@@ -405,6 +411,10 @@ void Application::systemControl()
 			<< "     crit:" << obstacleDistanceCritical
 			<< std::endl;
 	}
+	else
+	{
+		std::cout << "Unable to open fsm.log" << std::endl;
+	}
 }
 
 void Application::canOnTimeToSend()
@@ -416,37 +426,12 @@ void Application::canOnTimeToSend()
 	//Multiply the period by 2
 	if (i == 0)
 	{
-		/*Direction_t dir = m_carParamOut.dir;
-		AcmMode_t mode = m_carParamOut.mode;
-
-		if(mode == AcmMode_t::autonomous)
-			dir = Direction_t::middle;*/
-
 		m_canController.sendMessage(CanId_DirectionCmd, (uint8_t*)&m_carParamOut.dir);
-
 		i = 1;
 	}
 	else if (i == 1)
 	{
-		/*int isMoving = m_carParamOut.moving;
-		int isTurbo = m_carParamOut.turbo;
-		int autoLocked = m_carParamOut.autonomousLocked ;
-		AcmMode_t mode = m_carParamOut.mode;
-
-		uint16_t speed = 0;
-		if (mode == AcmMode_t::manual)
-		{
-			if (isMoving && !autoLocked)
-				speed = isTurbo ? 2 : 1;
-		}
-		else if (mode == AcmMode_t::autonomous)
-		{
-			if (!autoLocked)
-				speed = 1;
-		}*/
-
 		m_canController.sendMessage(CanId_SpeedCmd, (uint8_t*)&m_carParamOut.speed);
-
 		i = 0;
 	}
 /*
@@ -483,6 +468,7 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 	Direction_t dir;
 	uint8_t bat;
 	AcmMode_t mode;
+	RoadDetection_t roadDetection;
 
 	if (frame.can_id == CanId_UltrasoundData)
 	{
@@ -525,14 +511,15 @@ void Application::canOnDataReceived(int fd, uint32_t events)
 	dir = m_carParamIn.dir;
 	bat = m_carParamIn.bat;
 	mode = m_carParamOut.mode;
+	roadDetection = m_carParamIn.roadDetection;
 
 	if(mode == AcmMode_t::emergencyStop)
 		mode = AcmMode_t::autonomous;
 	if(mode == AcmMode_t::obstAvoiding)
 		mode = AcmMode_t::manual;
 
-	buf[0] = ((speed & 0x07) << 3) | (((uint8_t)dir & 0x03) << 1) | (((uint8_t)mode & 0x01) << 0);
-	buf[1] = ((0x00) << 4) | ((obstDetection) << 2) | ((bat & 0x03) << 0);
+	buf[0] = (((uint8_t)speed & 0x1F) << 3) 			| (((uint8_t)dir & 0x03) << 1) 				| (((uint8_t)mode & 0x01) << 0);
+	buf[1] = (((uint8_t)roadDetection & 0x07 ) << 5) 	| (((uint8_t)obstDetection & 0x07) << 2) 	| (((uint8_t)bat & 0x03) << 0);
 
 	// TODO: GattServer::sendNotification
 	bt_gatt_server_send_notification(m_gattServer.m_gatt_server, handle, buf, sizeof(buf));

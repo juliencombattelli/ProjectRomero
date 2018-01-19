@@ -31,15 +31,39 @@ public:
 	void generate_csv(const CarParamOut &m_carParamOut, const CarParamIn &m_carParamIn)
 	{
 		uint8_t speed;
-		speed = m_carParamIn.speedMeasure * 0.36; // Speed conversion from dm/s to km/h
-		fprintf(m_file, "%d;%d;%d;%d;", (int)m_carParamOut.mode, speed, (int)m_carParamIn.dir, (int)m_carParamIn.roadDetection);
-		for (int i = 0; i < 6; i++)
+		AcmMode_t currentMode;
+		int obst_detected = 0;
+		int obst_mobile = 0;
+		int obst_min_dist = 0;
+
+		speed =  m_carParamIn.speedMeasure * 0.36; // Speed conversion from dm/s to km/h
+
+		if (m_carParamOut.mode == AcmMode_t::obstAvoiding or m_carParamOut.mode == AcmMode_t::manual)
+			currentMode = AcmMode_t::manual;
+
+		else if (m_carParamOut.mode == AcmMode_t::emergencyStop or m_carParamOut.mode == AcmMode_t::autonomous)
+			currentMode = AcmMode_t::autonomous;
+
+
+		fprintf(m_file, "%d;%d;%d;%d;%d;%d;%d;", (int)currentMode, (int)m_carParamOut.requestedMode, speed, m_carParamOut.turbo,
+											   (int)m_carParamIn.dir, (int)m_carParamOut.dir, (int)m_carParamIn.roadDetection);
+
+		for (int i = 0 ; i < 6 ; i++)
 		{
-			fprintf(m_file, "%d;%d;%d;", m_carParamIn.obstacles[i].detected,
-					m_carParamIn.obstacles[i].mobile,
-					m_carParamIn.obstacles[i].dist);
+			if (m_carParamIn.obstacles[i].detected == 1 and obst_detected == 0)
+				obst_detected = 1;
+			if (m_carParamIn.obstacles[i].mobile == 1 and obst_mobile == 0)
+				obst_mobile = 1;
+			if (m_carParamIn.obstacles[i].detected == 1)
+			{
+				if(obst_min_dist == 0)
+					obst_min_dist = m_carParamIn.obstacles[i].dist;
+				else if (m_carParamIn.obstacles[i].dist < obst_min_dist)
+					obst_min_dist = m_carParamIn.obstacles[i].dist;
+			}
 		}
-		fprintf(m_file, "\n");
+		fprintf(m_file, "%d;%d;%d;",obst_detected,obst_mobile,obst_min_dist);
+		fprintf(m_file,"\n");
 	}
 
 private:
