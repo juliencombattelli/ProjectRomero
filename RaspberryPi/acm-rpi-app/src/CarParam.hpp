@@ -8,18 +8,44 @@
 #ifndef ACM_H_
 #define ACM_H_
 
-#include <thread>
-#include <mutex>
+#include <cstring>
 
 #include "ObstacleDetector.hpp"
 
 namespace acm
 {
 
-enum AcmMode : uint8_t
+enum class AcmMode_t : uint8_t
 {
-	ACM_MODE_MANUAL 		= 0,
-	ACM_MODE_AUTONOMOUS 	= 1
+	manual 			= 0,
+	autonomous		= 1,
+	obstAvoiding	= 2,
+	emergencyStop	= 3
+};
+
+enum class RoadDetection_t : uint8_t
+{
+	middle = 0,
+	right,
+	rightcrit,
+	left,
+	leftcrit
+};
+
+enum class Direction_t : uint8_t
+{
+	middle = 0,
+	leftCrit,
+	rightCrit,
+	left,
+	right
+};
+
+enum class Speed_t : uint8_t
+{
+	stop = 0,
+	normal,
+	turbo
 };
 
 
@@ -27,28 +53,33 @@ struct CarParamOut
 {
 	CarParamOut()
 	{
-		dir = 0;
+		dir = Direction_t::middle;
+		requestedDir = Direction_t::middle;
+		speed = Speed_t::stop;
 		sonar = 0;
-		new_mode = ACM_MODE_MANUAL;
-		mode = ACM_MODE_MANUAL;
+		requestedMode = AcmMode_t::manual;
+		mode = AcmMode_t::manual;
 
+		requestedTurbo = false;
 		turbo = false;
 		moving = false;
 		idle = true;
 
-		autonomous_locked=0 ;
+		autonomousLocked=0 ;
 	}
 
-	std::mutex mutex;
-	uint8_t dir;
+	Direction_t dir;
+	Direction_t requestedDir;
+	Speed_t speed;
 	uint8_t sonar;
-	uint8_t new_mode;
-	uint8_t mode;
+	AcmMode_t requestedMode;
+	AcmMode_t mode;
+	bool requestedTurbo;
 	bool turbo;
 	bool moving;
 	bool idle;
 
-	int autonomous_locked;
+	int autonomousLocked;
 };
 
 struct CarParamIn
@@ -56,18 +87,19 @@ struct CarParamIn
 	CarParamIn()
 	{
 		obst = 0;
-		speed = 0;
-		dir = 0;
+		speedMeasure = 0;
+		dir = Direction_t::middle;
 		bat = 0;
+		roadDetection = RoadDetection_t::middle;
 		memset(obstacles, 0, sizeof(obstacles));
 	}
 
-	std::mutex mutex;
 	uint8_t obst;
 	obstacle obstacles[6];
-	uint8_t speed;
-	uint8_t dir;
+	uint8_t speedMeasure;
+	Direction_t dir;
 	uint8_t bat;
+	RoadDetection_t roadDetection ;
 };
 
 } // namespace acm

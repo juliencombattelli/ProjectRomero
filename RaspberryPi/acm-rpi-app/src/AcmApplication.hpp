@@ -1,9 +1,8 @@
 #ifndef SRC_GATEWAY_HPP_
 #define SRC_GATEWAY_HPP_
 
+#include <Logger.hpp>
 #include <cstdint>
-
-#include <pthread.h>
 
 #include "mainloop/Timerfd.hpp"
 #include "mainloop/Signalfd.hpp"
@@ -11,7 +10,7 @@
 #include "gatt/GattServer.hpp"
 #include "CarParam.hpp"
 #include "ObstacleDetector.hpp"
-#include "Csv.hpp"
+#include "Camera.hpp"
 
 namespace acm
 {
@@ -38,10 +37,41 @@ public:
 		BleUuid_AcmCharAlert 	= 0xdcb1 	// Read and Notify
 	};
 
-	static constexpr unsigned int CAN_WRITE_PERIOD_MS 		= 25;
-	static constexpr unsigned int AUTO_PROCESS_PERIOD_MS 	= 200; // TODO: choose wisely =)
+	enum UsSensorId : uint16_t
+	{
+		UsSensorId_SideLeft 		= 0,
+		UsSensorId_FrontLeft 		= 1,
+		UsSensorId_FrontSideLeft 	= 2,
+		UsSensorId_FrontSideRight 	= 3,
+		UsSensorId_FrontRight 		= 4,
+		UsSensorId_SideRight 		= 5,
+	};
 
-	Application(const std::string &fileName) : csv(fileName); 
+	static constexpr unsigned int CAN_WRITE_PERIOD_MS 		= 25;
+	static constexpr unsigned int AUTO_PROCESS_PERIOD_MS 	= 50; // TODO: choose wisely =)
+	static constexpr unsigned int CAMERA_PROCESS_PERIOD_MS  = 200 ;
+
+	static constexpr float SPEED_THRESHOLD_NORMAL_TURBO = 1.5f;
+
+	struct UsSensorData
+	{
+		int detectionDistanceNormal_cm;
+		int detectionDistanceTurbo_cm;
+		float speedThresholdNormalTurbo_dmps;
+	};
+
+	inline static const std::map<UsSensorId, UsSensorData> usSensorParams
+	{
+		{UsSensorId_FrontLeft,		{40, 80,	SPEED_THRESHOLD_NORMAL_TURBO}},
+		{UsSensorId_FrontRight,		{40, 80,	SPEED_THRESHOLD_NORMAL_TURBO}},
+		{UsSensorId_FrontSideLeft, 	{20, 40,	SPEED_THRESHOLD_NORMAL_TURBO}},
+		{UsSensorId_FrontSideRight, {20, 40,	SPEED_THRESHOLD_NORMAL_TURBO}},
+		{UsSensorId_SideLeft, 		{5,  10,	SPEED_THRESHOLD_NORMAL_TURBO}},
+		{UsSensorId_SideRight, 		{5,  10,	SPEED_THRESHOLD_NORMAL_TURBO}}
+	};
+
+	Application(const std::string& timeFilename, const std::string& csvFilename) :
+		m_csvLogger(csvFilename), m_timeLogger(timeFilename) {}
 	~Application() = default;
 
 	void bleAdvertise();
@@ -55,6 +85,8 @@ private:
 	///////////////////////////////////////////////////////////////////////////
 	void signalCallback(int signum);
 	void autonomousControl();
+	void systemControl();
+	void cameraProcess();
 	void canOnTimeToSend();
 	void canOnDataReceived(int fd, uint32_t events);
 	void bleOnTimeToSend(void* user_data);
@@ -62,20 +94,20 @@ private:
 			unsigned int id, uint16_t offset, const uint8_t *value, size_t len,
 			uint8_t opcode, struct bt_att *att);
 
-	Timerfd timer;
-	//Timerfd timerCanSend;
-	//Timerfd timerAutonomousProcess;
-	Signalfd signal;
+	//Timerfd timer;
+	Timerfd m_timerCanSend;
+	Timerfd m_timerAutonomousProcess;
+	Timerfd m_timerCameraProcess;
+	Signalfd m_signal;
 
 	CanController m_canController;
 	GattServer m_gattServer;
 	CarParamOut m_carParamOut;
 	CarParamIn m_carParamIn ;
 	ObstacleDetector m_obstacleDetector;
-
-	pthread_t m_autonomousThread ;
-	
-	Csv csv;
+	Camera m_camera;
+	CsvLogger m_csvLogger;
+	TimeLogger m_timeLogger;
 };
 
 } // namespace acm
