@@ -2,6 +2,8 @@
  * Name:    API_CAN.c
  * Purpose: API for CAN functions
  * Note(s): 
+ * Authors: Guillaume De Brito
+ * Date: 10/2017
  *----------------------------------------------------------------------------
 */
 
@@ -22,7 +24,7 @@ void create_ultrasound_frame(data_ultrasound data, char * frame) {
 	frame[7] = '\0' ;
 }	
 
-//create the potentiometer data frame
+//create the direction data frame
 void create_potentiometer_frame(data_potentiometer data, char * frame) {
 	frame[0] = data.potentiometer.bytes_potentiometer ; 
 	frame[1] = '\0' ; 
@@ -34,7 +36,7 @@ void create_potentiometer_frame(data_potentiometer data, char * frame) {
 	frame[7] = '\0' ;
 }
 
-//create the potentiometer data frame
+//create the speed data frame
 void create_odometer_frame(data_odometer data, char * frame) {
 	frame[0] = data.odometer.bytes_odometer ;  
 	frame[1] = '\0' ; 
