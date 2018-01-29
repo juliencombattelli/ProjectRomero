@@ -91,6 +91,7 @@ struct CarParamIn
 		dir = Direction_t::middle;
 		bat = 0;
 		roadDetection = RoadDetection_t::middle;
+		prev_roadDetection = roadDetection ;
 		memset(obstacles, 0, sizeof(obstacles));
 	}
 
@@ -100,6 +101,7 @@ struct CarParamIn
 	Direction_t dir;
 	uint8_t bat;
 	RoadDetection_t roadDetection ;
+	RoadDetection_t prev_roadDetection ;
 };
 
 } // namespace acm

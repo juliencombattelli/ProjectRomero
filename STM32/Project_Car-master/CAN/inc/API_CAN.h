@@ -1,3 +1,12 @@
+/*----------------------------------------------------------------------------
+ * Name:    API_CAN.h
+ * Purpose: API for CAN functions
+ * Note(s): 
+ * Authors: Guillaume De Brito
+ * Date: 10/2017
+ *----------------------------------------------------------------------------
+*/
+
 #ifndef API_CAN_H
 #define API_CAN_H
 
@@ -14,7 +23,7 @@
 ------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 //STM32 -> Raspy
-//data structure for ultrasound sensors
+//data structure for ultrasound sensors 6 bytes
 //type must be define
 typedef struct data_ultrasound
 {		
@@ -25,7 +34,7 @@ typedef struct data_ultrasound
 	
 } data_ultrasound  ;
 
-//data structure for potentiometer sensor
+//data structure for potentiometer sensor (direction) 1 byte
 typedef struct data_potentiometer
 {
 	union {
@@ -35,7 +44,7 @@ typedef struct data_potentiometer
 	
 } data_potentiometer ; 
 
-//data structure for odometer sensor
+//data structure for odometer sensor (speed) 1 byte
 typedef struct data_odometer 
 {
 		union {
@@ -45,7 +54,7 @@ typedef struct data_odometer
 		
 } data_odometer ; 
 
-//data structure for battery 
+//data structure for battery 1 byte
 typedef struct data_battery
 {
 	

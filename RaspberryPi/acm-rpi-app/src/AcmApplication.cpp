@@ -366,17 +366,21 @@ void Application::systemControl()
 	{
 	case AcmMode_t::autonomous:
 		m_carParamOut.turbo = false;
-		m_carParamOut.speed = Speed_t::normal; // TODO: magic number
-		if (m_carParamIn.roadDetection == RoadDetection_t::left)
-			m_carParamOut.dir = Direction_t::right;
-		else if (m_carParamIn.roadDetection == RoadDetection_t::right)
-			m_carParamOut.dir = Direction_t::left;
-		else if (m_carParamIn.roadDetection == RoadDetection_t::leftcrit)
-			m_carParamOut.dir = Direction_t::rightCrit;
-		else if (m_carParamIn.roadDetection == RoadDetection_t::rightcrit)
-			m_carParamOut.dir = Direction_t::leftCrit;
-		else
-			m_carParamOut.dir = Direction_t::middle;
+		m_carParamOut.speed = Speed_t::normal; // TODO: magic number		
+		if(m_carParamIn.roadDetection==m_carParamIn.prev_roadDetection) {
+			if (m_carParamIn.roadDetection == RoadDetection_t::left)
+				m_carParamOut.dir = Direction_t::right;
+			else if (m_carParamIn.roadDetection == RoadDetection_t::right)
+				m_carParamOut.dir = Direction_t::left;
+			else if (m_carParamIn.roadDetection == RoadDetection_t::leftcrit)
+				m_carParamOut.dir = Direction_t::rightCrit;
+			else if (m_carParamIn.roadDetection == RoadDetection_t::rightcrit)
+				m_carParamOut.dir = Direction_t::leftCrit;
+			else
+				m_carParamOut.dir = Direction_t::middle;
+		} else {
+			m_carParamIn.prev_roadDetection=m_carParamIn.roadDetection ;
+		}
 		break;
 	case AcmMode_t::manual:
 		m_carParamOut.turbo = m_carParamOut.requestedTurbo;

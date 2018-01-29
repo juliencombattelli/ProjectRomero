@@ -1,3 +1,10 @@
+/*----------------------------------------------------------------------------
+ * Name:    main.c 
+ * Authors: Guillaume De Brito & Corentin Egreteau
+ * Date: 01/2018
+ *----------------------------------------------------------------------------
+*/
+
 #include <stdint.h>
 #include <stm32f10x.h>
 #include <stdlib.h>
@@ -16,13 +23,13 @@
 
 #include "stm32f10x.h"                            /* STM32F10x Definitions    */
 #include "CAN.h"                                  /* STM32 CAN adaption layer */
-#include "Timer_1234.h"														/* Timer driver */
-#include "it.h"																		/* IT driver */
+#include "Timer_1234.h"							  /* Timer driver */
+#include "it.h"									  /* IT driver */
 #include "API_CAN.h"
 
 
  /* ---------------------------------------
-  * Tests constant
+  * Variables containing the data to send in a CAN frame
   * ---------------------------------------*/
  data_ultrasound VAL_ULTRA ; 
  data_odometer VAL_ODOMETER ;
@@ -30,32 +37,34 @@
  data_battery VAL_BAT ;
 
 /*-------------------------------------------
----------------------------------------------
+------------ GLOBAL VARIABLES -------------------
 --------------------------------------------*/
 
-char text[17];
-uint8_t vit;
-unsigned int val_Tx = 0, val_Rx = 0;  /* Globals used for display */
-char trame[8];
-char SpeedRx[1];
-char DirRx[1];
-unsigned int periodic_modulo = 0;     /* Global used to determine the time to send periodic CAN frame */
-unsigned int nb_rcv = 0;							/* Global used to count the number of commands received */
-unsigned int detect_dist = 60; 				/* Global used to define de obstacle detection distance in cm */
 
-volatile uint32_t msTicks;            /* Counts 1ms timeTicks     */
+uint8_t vit;  						// Global car speed variable useful for the debug mode on Keil
+char trame[8]; 						// frame of 8 bytes send on the CAN bus
+char SpeedRx[1];    				// Take the value of the speed received on the CAN
+char DirRx[1];      				// Take the value of the direction received on the CAN
+unsigned int periodic_modulo = 0;   // Global used to determine the time to send periodic CAN frame 
+unsigned int nb_rcv = 0;			// Global used to count the number of commands received 
+unsigned int detect_dist = 200		// Global used to define the obstacle detection distance in cm 
 
-//Current distance detected for each ultrasound sensor
-float SR, SL, FSR, FR, FL, FSL; 	
-//Previous distance detected for each ultrasound sensor																			
-float Prev_SR, Prev_SL, Prev_FSR, Prev_FR, Prev_FL, Prev_FSL; 
+volatile uint32_t msTicks;          // Counts 1ms timeTicks    
+
+/* SR => SideRight, SL => SideLeft, FSR => FrontSideRight
+   FSL => FrontSideLeft, FR => FrontRight, FL => FrontLeft */ 
+float SR, SL, FSR, FR, FL, FSL; 	// Current distance detected for each ultrasound sensor
+																		
+float Prev_SR, Prev_SL, Prev_FSR, Prev_FR, Prev_FL, Prev_FSL; // Previous distance detected for each ultrasound sensor	
+
+ 
 /*----------------------------------------------------------------------------
   SysTick_Handler
  *----------------------------------------------------------------------------*/
-/*void SysTick_Handler(void) {
+void SysTick_Handler(void) {
   msTicks++;                        //increment counter necessary in Delay() 
 }
-*/
+
 /*----------------------------------------------------------------------------
   delays number of tick Systicks (happens every 1 ms)
  *----------------------------------------------------------------------------*/
@@ -71,24 +80,28 @@ void Delay (uint32_t dlyTicks) {
   initialize CAN interface
  *----------------------------------------------------------------------------*/
 void can_Init (void) {
-
-  CAN_setup ();                                   /* setup CAN Controller     */  
-	CAN_wrFilter (CAN_ID_CMD_DIR, STANDARD_FORMAT);             /* Enable reception of msgs */
-	CAN_wrFilter (CAN_ID_CMD_SPEED, STANDARD_FORMAT);             /* Enable reception of msgs */
-	
-  CAN_start ();                                   /* start CAN Controller   */
+	CAN_setup ();                                   	/* setup CAN Controller     */  
+	CAN_wrFilter (CAN_ID_CMD_DIR, STANDARD_FORMAT);     /* Enable reception of msgs for the direction*/
+	CAN_wrFilter (CAN_ID_CMD_SPEED, STANDARD_FORMAT);   /* Enable reception of msgs for the speed */	
+	CAN_start ();                                  	    /* start CAN Controller   */
 	CAN_TxMsg.id = CAN_ID_ULTRASOUND;
-  CAN_waitReady ();                               /* wait til tx mbx is empty */
+	CAN_waitReady ();                                   /* wait til tx mbx is empty */
 }
 
- 
+/*----------------------------------------------------------------------------
+  send periodically CAN frames
+*----------------------------------------------------------------------------*/
 void canPeriodic (void) {
-	int i;
-	uint8_t angle_direction, car_dist, bat ; 
-	uint8_t speed = (uint8_t)((SpeedSensor_get(SPEED_CM_S,SENSOR_L)+SpeedSensor_get(SPEED_CM_S,SENSOR_R))/2.0) ;
-	int dist;
+	int i; 						// loop indicator
+	uint8_t angle_direction; 	// angle of the front wheels
+	uint8_t car_dist;			// distance traveled by the car during a period 
+	uint8_t bat;				// value in percentage of the battery	
+	int dist;					// distance of an obstacle detected by the ultrasounds	
+	
+	uint8_t speed = (uint8_t)((SpeedSensor_get(SPEED_CM_S,SENSOR_L)+SpeedSensor_get(SPEED_CM_S,SENSOR_R))/2.0); // current speed of the car in CM/s
+	
 	/*------------------------------------------
-	 * Send an ultrasound frame every 200ms
+	 * Send an ultrasound frame every 100ms
 	 *-----------------------------------------*/
 	//Take the obstacle distance for each sensor
 	FSL = US_CalcDistance(0);
@@ -98,19 +111,25 @@ void canPeriodic (void) {
 	FR  = US_CalcDistance(4);
 	SR  = US_CalcDistance(5);
 	
-	car_dist = speed/5 + 2; // Distance of the car in 200 ms 
+	car_dist = speed/10 + 2; // Distance in cm traveled by the car in 100 ms (+2 : margin used to not detect a mobile obstacle when the car is immobile du to the ultrasound fluctuation)
 		
-	//Detect an obstacle at less than 2 meters and get the obstacle distance
-	
+	// 1 ultrasound <=> 1 byte => ultrasound[7:0] = dist[7:2] mobile[1] detected[0]
+	// dist is the distance in cm divided by 2 of an obstacle detected on 6 bits 
+	// mobile is equal to 1 if the obstacle is moving otherwise equals to 0
+	// detected equals 1 if an obstacle is detected at less than 2 meters
+		
 	if (SL < detect_dist) {
-		VAL_ULTRA.ultrasound.bytes_ultrasound[0] = 1; 
-		dist = (((int)(SL)) >> 1) << 2;
-		if (dist > 252) {
-			dist = 252;
+		VAL_ULTRA.ultrasound.bytes_ultrasound[0] = 1; // detected[0] = 1
+		dist = (((int)(SL)) >> 1) << 2; // ">> 1" is the division of the distance by 2 and "<< 2" is a left shift to put this data in dist[7:2]
+		if (dist > 252) { // maximum value on 6 bits is 64 => 64 << 2 = 252
+			dist = 252;	  // the maximal distance send in the frame is 1,28 m (64*2)
 		}
-		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += dist;
+		VAL_ULTRA.ultrasound.bytes_ultrasound[0] += dist; // dist[7:2] = dist
+		
+		// Check if the diff between two successive measures of the same ultrasound is superior to the distance traveled by the car during this period
+		// or if during the prior period one of the neighbouring ultrasound detected an obstacle and during the current period it do not detect it anymore
 		if (abs((int)(Prev_SL-SL)) > car_dist || (Prev_FSL < detect_dist && FSL > detect_dist)){
-			VAL_ULTRA.ultrasound.bytes_ultrasound[0] += 2; 
+			VAL_ULTRA.ultrasound.bytes_ultrasound[0] += 2; // mobile[1] = 1
 		}
 	}
 	else {VAL_ULTRA.ultrasound.bytes_ultrasound[0] = 0;}
@@ -301,16 +320,17 @@ void canPeriodic (void) {
 	nb_rcv = 0;		
 }
 
-
+/*----------------------------------------------------------------------------
+  Turns the front wheels at the angle desired
+ *----------------------------------------------------------------------------*/
 void Turn(uint8_t deg){
-	uint8_t angle = Direction_get() ;
-	if (deg > Direction_get() + 3){
+	uint8_t angle = Direction_get(); //take current angle of the wheels
+	if (deg > Direction_get() + 3){	 // +3 is used to have a tolerance interval and to avoid wheel oscillations
 		FrontMotor_turn(LEFT);}
 	else if (deg < Direction_get() - 3){
 		FrontMotor_turn(RIGHT);}
 	else {
 		FrontMotor_turn(NONE);}}
-		//Motor_Disable(FRONT_MOTOR);
 
 		 
 void Speed_Cmd(char *cmd){
