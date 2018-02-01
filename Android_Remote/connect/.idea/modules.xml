@@ -3,9 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
-      <module fileurl="file://C:\Users\Aqua\Documents\A5\ProjectRomero\ProjectRomero\Android_Remote\connect\app\app.iml" filepath="C:\Users\Aqua\Documents\A5\ProjectRomero\ProjectRomero\Android_Remote\connect\app\app.iml" />
       <module fileurl="file://$PROJECT_DIR$/connect.iml" filepath="$PROJECT_DIR$/connect.iml" />
-      <module fileurl="file://C:\Users\Aqua\Documents\A5\ProjectRomero\ProjectRomero\Android_Remote\connect\connect.iml" filepath="C:\Users\Aqua\Documents\A5\ProjectRomero\ProjectRomero\Android_Remote\connect\connect.iml" />
     </modules>
   </component>
 </project>
