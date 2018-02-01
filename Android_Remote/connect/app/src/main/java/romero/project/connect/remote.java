@@ -89,7 +89,7 @@ public class remote extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.remote);
-        Log.i(TAG, "Create\n");
+        //Log.i(TAG, "Create\n");
 
         auto = findViewById(R.id.autonomous);
         connect = findViewById(R.id.connect);
@@ -156,7 +156,7 @@ public class remote extends AppCompatActivity {
         connected = false;
         connexionChange();
         connect.getBackground().setColorFilter(Color.parseColor(night), PorterDuff.Mode.MULTIPLY);
-        Log.i(TAG, "Buttons\n");
+        //Log.i(TAG, "Buttons\n");
 
         connect.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -164,14 +164,14 @@ public class remote extends AppCompatActivity {
                     if (btGatt != null) {
                         btGatt.disconnect();
                     }
-                    Log.i(TAG, "disconnect\n");
+                    //Log.i(TAG, "disconnect\n");
                 } else {
                     if (btGatt == null) {
                         connect.setText(R.string.connecting);
                         btGatt = btDevice.connectGatt(remote.this, false, gattCallback, TRANSPORT_LE);
                         refreshDeviceCache(btGatt);
                     }
-                    Log.i(TAG, "connect\n");
+                    //Log.i(TAG, "connect\n");
                 }
             }
         });
@@ -198,7 +198,7 @@ public class remote extends AppCompatActivity {
                         driving = false;
                         resetSymbols();
                         modeChanged = 5;
-                        Log.i(TAG, "manual\n");
+                        //Log.i(TAG, "manual\n");
                         start.setText(R.string.start);
                         start.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
                         turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
@@ -210,7 +210,7 @@ public class remote extends AppCompatActivity {
                         driving = false;
                         resetSymbols();
                         modeChanged = 5;
-                        Log.i(TAG, "autonomous\n");
+                        //Log.i(TAG, "autonomous\n");
                         start.setText(R.string.start);
                         start.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
                         turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
@@ -241,14 +241,14 @@ public class remote extends AppCompatActivity {
                             turboed = false;
                             driving = false;
                             resetSymbols();
-                            Log.i(TAG, "stop\n");
+                            //Log.i(TAG, "stop\n");
                             turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
                         } else {
                             start.setText(R.string.stop);
                             turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
                             started = true;
                             resetSymbols();
-                            Log.i(TAG, "start\n");
+                            //Log.i(TAG, "start\n");
                             joystick.setEnabled(true);
                             joystick.invalidate();
                         }
@@ -276,11 +276,11 @@ public class remote extends AppCompatActivity {
                             if (turboed) {
                                 turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
                                 turboed = false;
-                                Log.i(TAG, "turbo off\n");
+                                //Log.i(TAG, "turbo off\n");
                             } else {
                                 turbo.getBackground().setColorFilter(Color.parseColor(purple), PorterDuff.Mode.MULTIPLY);
                                 turboed = true;
-                                Log.i(TAG, "turbo on\n");
+                                //Log.i(TAG, "turbo on\n");
                             }
                         }
                     }
@@ -309,7 +309,7 @@ public class remote extends AppCompatActivity {
                         }
                         if (strength < 50 & driving) {
                             driving = false;
-                            Log.i(TAG, "stopped");
+                            //Log.i(TAG, "stopped");
                         }
                         computeJoystickValue(angle);
                     }
@@ -337,14 +337,14 @@ public class remote extends AppCompatActivity {
                 timer = new Timer();
                 connexionChange();
                 messageSend();
-                Log.i(TAG, "Connected to GATT server\n");
+                //Log.i(TAG, "Connected to GATT server\n");
                 btGatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
                 btGatt.discoverServices();
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 resetSymbols();
                 connected = false;
                 connexionChange();
-                Log.i(TAG, "Disconnected from GATT server\n");
+                //Log.i(TAG, "Disconnected from GATT server\n");
                 if (btGatt != null) {
                     btGatt.close();
                     btGatt = null;
@@ -369,26 +369,26 @@ public class remote extends AppCompatActivity {
                 btGatt = null;
                 return;
             }
-            Log.i(TAG, "service discovered\n");
+            //Log.i(TAG, "service discovered\n");
             List<BluetoothGattService> services = gatt.getServices();
             long uuid;
             // Loop through available GATT Services.
             for (BluetoothGattService gattService : services) {
                 uuid = gattService.getUuid().getMostSignificantBits() >> 32;
-                Log.i(TAG, uuid + "\n");
+                //Log.i(TAG, uuid + "\n");
                 if (uuid == uuidRemoteService) {
-                    Log.i(TAG, "found uuid\n");
+                    //Log.i(TAG, "found uuid\n");
                     List<BluetoothGattCharacteristic> gattCharacteristics = gattService.getCharacteristics();
                     // Loop through available Characteristics.
                     for (BluetoothGattCharacteristic gattCharacteristic : gattCharacteristics) {
                         uuid = gattCharacteristic.getUuid().getMostSignificantBits() >> 32;
-                        Log.i(TAG, uuid + "\n");
+                        //Log.i(TAG, uuid + "\n");
                         if (uuid == uuidState) {
                             stateCharacteristic = gattCharacteristic;
-                            Log.i(TAG, "found state\n");
+                            //Log.i(TAG, "found state\n");
                         } else if (uuid == uuidFeedback) {
                             feedbackCharacteristic = gattCharacteristic;
-                            Log.i(TAG, "found feedback\n");
+                            //Log.i(TAG, "found feedback\n");
                         }
                     }
                     enableNotification(btGatt);
@@ -405,7 +405,7 @@ public class remote extends AppCompatActivity {
          */
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            Log.i(TAG, "notification!");
+            //Log.i(TAG, "notification!");
             final int data = characteristic.getIntValue(FORMAT_UINT16, 0);
             //Log.i(TAG, "data: " + data + "\n");
 
@@ -521,9 +521,9 @@ public class remote extends AppCompatActivity {
             descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
             result = gatt.writeDescriptor(descriptor);
             if (result) {
-                Log.i(TAG, "feedback notification enabled\n");
+                //Log.i(TAG, "feedback notification enabled\n");
             } else {
-                Log.i(TAG, "feedback notification not enabled\n");
+                //Log.i(TAG, "feedback notification not enabled\n");
             }
         }
 
@@ -569,7 +569,7 @@ public class remote extends AppCompatActivity {
                         turboed = false;
                         driving = false;
                         resetSymbols();
-                        Log.i(TAG, "autonomous\n");
+                        //Log.i(TAG, "autonomous\n");
                         start.setText(R.string.start);
                         turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
                         start.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
@@ -584,7 +584,7 @@ public class remote extends AppCompatActivity {
                         turboed = false;
                         driving = false;
                         resetSymbols();
-                        Log.i(TAG, "manual\n");
+                        //Log.i(TAG, "manual\n");
                         start.setText(R.string.start);
                         turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
                         start.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
@@ -605,7 +605,7 @@ public class remote extends AppCompatActivity {
      */
     private void changeDir(final int directionValue) {
 
-        Log.i(TAG, "change direction\n");
+        //Log.i(TAG, "change direction\n");
         runOnUiThread(new Runnable() {
             public void run() {
                 switch (directionValue) {
@@ -826,7 +826,7 @@ public class remote extends AppCompatActivity {
                         message = createMessage();
                         if (message != previousMessage) {
                             previousMessage = message;
-                            Log.i(TAG, "to send: " + message + "\n");
+                            //Log.i(TAG, "to send: " + message + "\n");
                             stateCharacteristic.setValue(message, FORMAT_UINT8, 0);
                             stateCharacteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
                             btGatt.writeCharacteristic(stateCharacteristic);
