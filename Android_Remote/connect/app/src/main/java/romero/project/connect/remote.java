@@ -200,6 +200,7 @@ public class remote extends AppCompatActivity {
                         modeChanged = 5;
                         Log.i(TAG, "manual\n");
                         start.setText(R.string.start);
+                        start.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
                         turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
                     } else {
                         auto.setText(R.string.autonomous);
@@ -211,6 +212,7 @@ public class remote extends AppCompatActivity {
                         modeChanged = 5;
                         Log.i(TAG, "autonomous\n");
                         start.setText(R.string.start);
+                        start.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
                         turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
                     }
                 }
@@ -225,28 +227,28 @@ public class remote extends AppCompatActivity {
      * change state variables
      * change button text depending on the state
      * resets the dashbord and joystick
+     * activates the joystick depending on the state
      */
     private void setStartButton() {
         //start button
         start.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (connected) {
-                    if (started) {
-                        start.setText(R.string.start);
-                        started = false;
-                        turboed = false;
-                        driving = false;
-                        resetSymbols();
-                        Log.i(TAG, "stop\n");
-                        if (!autonomous) {
+                    if (!autonomous){
+                        if (started) {
+                            start.setText(R.string.start);
+                            started = false;
+                            turboed = false;
+                            driving = false;
+                            resetSymbols();
+                            Log.i(TAG, "stop\n");
                             turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
-                        }
-                    } else {
-                        start.setText(R.string.stop);
-                        started = true;
-                        resetSymbols();
-                        Log.i(TAG, "start\n");
-                        if (!autonomous) {
+                        } else {
+                            start.setText(R.string.stop);
+                            turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
+                            started = true;
+                            resetSymbols();
+                            Log.i(TAG, "start\n");
                             joystick.setEnabled(true);
                             joystick.invalidate();
                         }
@@ -269,15 +271,17 @@ public class remote extends AppCompatActivity {
         turbo.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (connected) {
-                    if (started) {
-                        if (turboed) {
-                            turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
-                            turboed = false;
-                            Log.i(TAG, "turbo off\n");
-                        } else {
-                            turbo.getBackground().setColorFilter(Color.parseColor(purple), PorterDuff.Mode.MULTIPLY);
-                            turboed = true;
-                            Log.i(TAG, "turbo on\n");
+                    if (!autonomous){
+                        if (started) {
+                            if (turboed) {
+                                turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
+                                turboed = false;
+                                Log.i(TAG, "turbo off\n");
+                            } else {
+                                turbo.getBackground().setColorFilter(Color.parseColor(purple), PorterDuff.Mode.MULTIPLY);
+                                turboed = true;
+                                Log.i(TAG, "turbo on\n");
+                            }
                         }
                     }
                 }
@@ -438,7 +442,13 @@ public class remote extends AppCompatActivity {
     };
 
     ////////////////////////////////////////////////////////////////////////////////
-    //functions
+    //Bluetooth functions
+
+    /**
+     * Function refreshing the bluetooth device cache
+     * @param gatt GATT client the device is associated with
+     * @return boolean indicating the success or failure of the refresh procedure
+     */
     private boolean refreshDeviceCache(BluetoothGatt gatt){
         try {
             BluetoothGatt localBluetoothGatt = gatt;
@@ -452,6 +462,7 @@ public class remote extends AppCompatActivity {
         }
         return false;
     }
+
     /**
      * Function changing the UI and changing state variables according to the connection state
      */
@@ -518,6 +529,9 @@ public class remote extends AppCompatActivity {
 
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+    //Symbol functions
+
     /**
      * Function resetting all symbols to their rest appearance
      */
@@ -535,7 +549,6 @@ public class remote extends AppCompatActivity {
                 String conSpeedString = String.valueOf(0.0) + " km/h";
                 speed.setText(conSpeedString);
 
-
             }
         });
     }
@@ -545,7 +558,6 @@ public class remote extends AppCompatActivity {
      *
      * @param modeValue mode: true = autonomous, false = manual
      */
-    //Todo
     private void changeMode(final int modeValue) {
         runOnUiThread(new Runnable() {
             public void run() {
@@ -560,6 +572,7 @@ public class remote extends AppCompatActivity {
                         Log.i(TAG, "autonomous\n");
                         start.setText(R.string.start);
                         turbo.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
+                        start.getBackground().setColorFilter(Color.parseColor(ice), PorterDuff.Mode.MULTIPLY);
                     } else {
                         modeChanged--;
                     }
@@ -574,6 +587,7 @@ public class remote extends AppCompatActivity {
                         Log.i(TAG, "manual\n");
                         start.setText(R.string.start);
                         turbo.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
+                        start.getBackground().setColorFilter(Color.parseColor(blue), PorterDuff.Mode.MULTIPLY);
                     } else {
                         modeChanged--;
                     }
@@ -752,11 +766,11 @@ public class remote extends AppCompatActivity {
             if (joystick_angle <= 20 | joystick_angle > 340)
                 joystick_value = 2;
             else if (joystick_angle <= 65 & joystick_angle > 20)
-                joystick_value = 2;
+                joystick_value = 4;
             else if (joystick_angle <= 110 & joystick_angle > 65)
                 joystick_value = 0;
             else if (joystick_angle <= 155 & joystick_angle > 110)
-                joystick_value = 1;
+                joystick_value = 3;
             else if (joystick_angle <= 200 & joystick_angle > 155)
                 joystick_value = 1;
             else
@@ -795,6 +809,10 @@ public class remote extends AppCompatActivity {
         return message;
     }
 
+
+    /**
+     * Function sending a new message at most every 200ms
+     */
     private void messageSend() {
         int delay = 2000; // delay for 2 s.
         int period = 200; // repeat every 1 s.
