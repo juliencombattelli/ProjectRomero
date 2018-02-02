@@ -1,4 +1,4 @@
-# ACM RaspberryPi3 application
+# RaspberryPi3 application
 
 This folder contains the source files of the RaspberryPi3 application.
 
