@@ -36,5 +36,4 @@ The Keil5 project is located in STM32/Project_Car-master. To open it, go into ST
 
 ## Contribute
 
-If you want to get involved and suggest some additional features, file a bug report or submit a patch, please create a pull request or open an issue on the Github repository.
-
+If you want to get involved and suggest some additional features, signal a bug or submit a patch, please create a pull request or open an issue on the Github repository.
