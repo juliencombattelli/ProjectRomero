@@ -19,10 +19,10 @@ The following directory structure will be used in this document:
 	└─── poky
 ```
 
-Download the following meta-layers :
-  - meta-openembedded: 	```git clone -b rocko https://github.com/openembedded/meta-openembedded```
-  - meta-raspberrypi: 	```git clone -b rocko https://github.com/agherzan/meta-raspberrypi```
-  - meta-mingw: 		```git clone -b rocko https://git.yoctoproject.org/git/meta-mingw```
+Download the following meta-layers:
+  - meta-openembedded:  ```git clone -b rocko https://github.com/openembedded/meta-openembedded```
+  - meta-raspberrypi:   ```git clone -b rocko https://github.com/agherzan/meta-raspberrypi```
+  - meta-mingw:         ```git clone -b rocko https://git.yoctoproject.org/git/meta-mingw```
 
 Place them in your Yocto src directory and copy meta-acm alongside the others meta layers.
 
@@ -75,7 +75,7 @@ Execute the following command to build the image:
 ```
 bitbake acm-image
 ```
-The resulting image will be build/tmp/deploy/images/raspberrypi3/acm-image-raspberrypi3.rpi-sdimg
+The resulting image will be build/tmp/deploy/images/raspberrypi3/acm-image-raspberrypi3.rpi-sdimg.
 
 ### Build the SDK
 
@@ -91,7 +91,7 @@ The resulting sdk will be in build/tmp/deploy/sdk/:
   - for Linux sdk, acm-glibc-x86_64-acm-image-cortexa7hf-neon-vfpv4-toolchain-1.0-<date>.sh
   - for Windows sdk, acm-glibc-x86_64-acm-image-cortexa7hf-neon-vfpv4-toolchain-1.0-<date>.tar.xz
   
-/!\ If you decide to change the sdk architecture target, it is recommended to clean the build directory (except conf and download directories):
+/!\ If you decide to change the sdk architecture target, it is recommended to clean the build directory (except conf and download directories) before build the sdk:
 ```
 rm -r cache sstate-cache tmp
 ```
