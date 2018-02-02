@@ -12,7 +12,7 @@ The project is split into 4 modules :
 
 ### Android application
 
-Follow the instructions in [Android_Remote/README.md](https://github.com/juliencombattelli/ProjectRomero/blob/master/Android_Remote/README.md).
+Follow the instructions in [Android_Remote/README.md](Android_Remote/README.md).
 
 ### Raspberry Yocto OS
 
