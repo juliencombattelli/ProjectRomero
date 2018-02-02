@@ -20,6 +20,7 @@ import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -32,9 +33,11 @@ import java.util.ArrayList;
 
 public class scan extends AppCompatActivity {
 
+    private final static String TAG = remote.class.getSimpleName();
+
     String white = "#ffffff";
     String blue = "#0097bd";
-    String night =  "#002e39";
+    String night = "#002e39";
 
     //variables
     Button scanningButton;
@@ -64,7 +67,6 @@ public class scan extends AppCompatActivity {
 
         btManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         btAdapter = btManager.getAdapter();
-        btScanner = btAdapter.getBluetoothLeScanner();
 
         gpsManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
@@ -82,9 +84,6 @@ public class scan extends AppCompatActivity {
             });
             builder.setIcon(android.R.drawable.ic_dialog_alert);
             builder.show();
-        } else if (!btAdapter.isEnabled()) {
-            Intent enable = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            startActivityForResult(enable, REQUEST_BLUETOOTH);
         }
 
         // Ensures coarse location permission is granted. If not displays a dialog requesting
@@ -124,6 +123,7 @@ public class scan extends AppCompatActivity {
             alert.show();
         }
 
+
         ////////////////////////////////--------------------------////////////////////////
         //identifying layout elements
         list = findViewById(R.id.list);
@@ -134,6 +134,7 @@ public class scan extends AppCompatActivity {
         scanningButton.setText(R.string.scan);
         scanningButton.getBackground().setColorFilter(Color.parseColor(night), PorterDuff.Mode.MULTIPLY);
 
+        btScanner = btAdapter.getBluetoothLeScanner();
         //scan button
         scanningButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -160,12 +161,48 @@ public class scan extends AppCompatActivity {
                 } else {
                     final AlertDialog.Builder builder = new AlertDialog.Builder(this);
                     builder.setTitle("Limited functionality");
-                    builder.setMessage("Since location access has not been granted, this app will not be able to discover beacons when in the background.");
+                    builder.setMessage("Since location access has not been granted, this app will not be able to discover beacons.");
                     builder.setPositiveButton(android.R.string.ok, null);
                     builder.show();
                 }
             }
         }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.i(TAG, "Start\n");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.i(TAG, "Resume\n");
+
+        if (!btAdapter.isEnabled()) {
+            Intent enable = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enable, REQUEST_BLUETOOTH);
+        }
+        btScanner = btAdapter.getBluetoothLeScanner();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.i(TAG, "Pause\n");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.i(TAG, "Stop\n");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.i(TAG, "Close\n");
     }
 
     ////////////////////////////////-------Scanning------////////////////////////
@@ -175,7 +212,12 @@ public class scan extends AppCompatActivity {
         AsyncTask.execute(new Runnable() {
             @Override
             public void run() {
-                btScanner.startScan(leScanCallback);
+                if(btScanner != null){
+                    btScanner.startScan(leScanCallback);
+                } else {
+                    Log.i(TAG, "No scanner\n");
+                }
+
             }
         });
         scanning = true;
@@ -187,7 +229,11 @@ public class scan extends AppCompatActivity {
         AsyncTask.execute(new Runnable() {
             @Override
             public void run() {
-                btScanner.stopScan(leScanCallback);
+                if(btScanner != null){
+                    btScanner.stopScan(leScanCallback);
+                } else {
+                    Log.i(TAG, "No scanner\n");
+                }
             }
         });
         scanning = false;
