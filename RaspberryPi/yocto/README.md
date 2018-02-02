@@ -114,4 +114,14 @@ For Windows:
   - open your archive manager (7-zip or WinRAR for example) with Administrator privilege
   - extract the .tar.xz archive from build/tmp/deploy/sdk where you want
   - if your extractor software ask you to replace some files with others, say NO for all of them
+  
+### Connect to the RPi3
+
+The RPi3 ethernet interface is in DHCP client configuration. That mean you MUST have a DHCP server running on your network. The INSA network provide such configuration, therefore it is recommended to use it. Otherwise, you will have to configure yourself the DHCP server on your machine. 
+
+You can directly connect to the RPi using its hostname even if you do not know its IP address:
+```
+ssh root@romero
+```
+If your ssh client do not recognize the "romero" hostname, run ifconfig on the RPi3 to see its IP address, then connect to it using ssh.
 
