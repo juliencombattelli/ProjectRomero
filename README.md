@@ -6,8 +6,6 @@ Autonomous vehicles will, in the near future, completely redefine our mobility m
 
 You can get the latest [release](https://github.com/juliencombattelli/ProjectRomero/releases) on Github. You can also get the current development version by cloning the master branch.
 
-[release](/releases)
-
 ## Build
 
 The project is split into 4 modules :
