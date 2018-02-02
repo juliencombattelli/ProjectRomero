@@ -16,11 +16,11 @@ Follow the instructions in [Android_Remote/README.md](Android_Remote/README.md).
 
 ### Raspberry Yocto OS
 
-Follow the instructions in RaspberryPi/yocto/README.md.
+Follow the instructions in [RaspberryPi/yocto/README.md](RaspberryPi/yocto/README.md).
 
 ### Raspberry application
 
-Follow the instructions in [RaspberryPi/acm-rpi-app/README.md].
+Follow the instructions in [RaspberryPi/acm-rpi-app/README.md](RaspberryPi/acm-rpi-app/README.md).
 
 ### STM32 application
 
