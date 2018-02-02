@@ -20,7 +20,7 @@ Follow the instructions in RaspberryPi/yocto/README.md.
 
 ### Raspberry application
 
-Follow the instructions in RaspberryPi/acm-rpi-app/README.md.
+Follow the instructions in [RaspberryPi/acm-rpi-app/README.md].
 
 ### STM32 application
 
